@@ -218,9 +218,9 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors) {
 
   # Create a function to generate SHAP summary plots
   generate_shap_summary_plot <- function(xgb_model, X_train, param_name) {
-    shap_values <- shap.values(xgb_model = xgb_model, X_train = X_train)
-    shap_long <- shap.prep(xgb_model = xgb_model, X_train = X_train)
-    p <- shap.plot.summary(shap_long)
+    shap_values <- SHAPforxgboost::shap.values(xgb_model = xgb_model, X_train = X_train)
+    shap_long <- SHAPforxgboost::shap.prep(xgb_model = xgb_model, X_train = X_train)
+    p <- SHAPforxgboost::shap.plot.summary(shap_long)
     p <- p + ggtitle(param_name)
 
     return(p)
@@ -327,7 +327,10 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   res <- t(result_5folds[,1:5])
   res <- res %>% na_if("")
 
-  result_ML <- result_ML %>% na_if("")
+  result_ML <- as.matrix(result_ML) %>% dplyr::na_if("")
+  #result_ML[result_ML == ""] <- NA
+  #result_ML <- as.matrix(result_ML) %>% dplyr::na_if("")
+  
 
   # Assign the independent and dependent covariates
   x_xgb <- data.matrix(dat_XGB[, c(full_covariate_xgm)])
