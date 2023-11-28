@@ -4,7 +4,7 @@
 \alias{MLCovSearch}
 \title{MLCovSearch}
 \usage{
-MLCovSearch(tab, list_pop_param, cov_continuous, cov_factors)
+MLCovSearch(tab, list_pop_param, cov_continuous, cov_factors, seed = NULL)
 }
 \arguments{
 \item{tab}{A data frame containing the data to be analyzed}

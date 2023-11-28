@@ -28,9 +28,17 @@ NULL
 #' @return list
 #' @export
 #'
-MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors) {
+MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed = NULL) {
+  
+  if (is.null(seed)) {
+    rm(.Random.seed)
+  } else {
+    set.seed(seed)
+    print(paste0("Using seed: ", seed))
+  }
 
-  stopifnot(requireNamespace("caret", quietly = TRUE))
+  stopifnot(requireNamespace("caret", quietly = TRUE),
+            is.numeric(seed))
   # Selection of columns required
   tab <- tab %>%
     select(ID, all_of(list_pop_param), all_of(cov_continuous), all_of(cov_factors))
@@ -289,7 +297,17 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors) {
 #' plots <- generate_residualsplots(data, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, 1)
 #'
 #' @export
-generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i ) {
+generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i, seed = NULL) {
+  
+  if (is.null(seed)) {
+    rm(.Random.seed)
+  } else {
+    set.seed(seed)
+    print(paste0("Using seed: ", seed))
+  }
+  
+  stopifnot((is.numeric(seed) || is.null(seed)))
+  
   # Selection of columns required
   tab <- tab %>%
     select(ID, all_of(list_pop_param), all_of(cov_continuous), all_of(cov_factors))
@@ -343,6 +361,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   if (is.na(result_ML[i, 1]) == F)  {
     list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
     x.selected_final <- as.matrix(dat_XGB %>% select(all_of(list_cov[[1]])))
+    
+    set.seed(seed)
 
     train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
     training <- as.matrix(x.selected_final[train.ind, ])
@@ -447,6 +467,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     if (nrow(comptage) != 0) {
 
     x.selected_final <- as.matrix(dat_XGB %>% select(all_of(comptage$list_cov_nb)))
+    
+    set.seed(seed)
 
     train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
     training <- as.matrix(x.selected_final[train.ind, ])

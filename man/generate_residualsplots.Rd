@@ -11,7 +11,8 @@ generate_residualsplots(
   cov_factors,
   result_ML,
   result_5folds,
-  i
+  i,
+  seed = NULL
 )
 }
 \arguments{
