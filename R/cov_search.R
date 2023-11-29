@@ -24,11 +24,15 @@ NULL
 #' @param list_pop_param Parameters
 #' @param cov_continuous Character vector of continuous covariate names
 #' @param cov_factors Character vector of categorical or occasion covariate names
+#' @param seed Numeric value for usage of \code{set.seed()} inside function.
 #'
 #' @return list
 #' @export
 #'
-MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors) {
+MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed = 123) {
+  
+  stopifnot(is.numeric(seed))
+  set.seed(seed)
 
   stopifnot(requireNamespace("caret", quietly = TRUE))
   # Selection of columns required
@@ -289,7 +293,10 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors) {
 #' plots <- generate_residualsplots(data, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, 1)
 #'
 #' @export
-generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i ) {
+generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i, seed = 123 ) {
+  stopifnot(is.numeric(seed))
+  set.seed(seed)
+  
   # Selection of columns required
   tab <- tab %>%
     select(ID, all_of(list_pop_param), all_of(cov_continuous), all_of(cov_factors))
@@ -556,7 +563,7 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     return()
     }
   }
-
+  
   # Return the list of subplots for the given parameter i
   return(plots_list)
 }

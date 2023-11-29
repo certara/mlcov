@@ -4,7 +4,7 @@
 \alias{MLCovSearch}
 \title{MLCovSearch}
 \usage{
-MLCovSearch(tab, list_pop_param, cov_continuous, cov_factors)
+MLCovSearch(tab, list_pop_param, cov_continuous, cov_factors, seed = 123)
 }
 \arguments{
 \item{tab}{A data frame containing the data to be analyzed}
@@ -14,6 +14,8 @@ MLCovSearch(tab, list_pop_param, cov_continuous, cov_factors)
 \item{cov_continuous}{Character vector of continuous covariate names}
 
 \item{cov_factors}{Character vector of categorical or occasion covariate names}
+
+\item{seed}{Numeric value for usage of \code{set.seed()} inside function.}
 }
 \value{
 list

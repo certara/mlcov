@@ -11,7 +11,8 @@ generate_residualsplots(
   cov_factors,
   result_ML,
   result_5folds,
-  i
+  i,
+  seed = 123
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ generate_residualsplots(
 \item{result_5folds}{A data frame containing model results from 5-fold cross-validation.}
 
 \item{i}{An integer indicating the index of the parameter of interest.}
+
+\item{seed}{Numeric value for usage of \code{set.seed()} inside function.}
 }
 \value{
 A list of ggplot objects, each representing a residual plot for a different covariate. The function returns an empty list if no significant relationships are found. It also handles cases where covariates are not selected after the vote.
