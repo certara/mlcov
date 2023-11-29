@@ -1,0 +1,53 @@
+Package: mlcov
+Type: Package
+Title: Machine learning application for covariate selection
+Version: 0.0.1.9000
+Authors@R: c(
+      person("Ayman", "Akil", email = "ayman.akil@certara.com",
+        role = c("aut")),
+      person("Ibtissem", "Rebai", email = "Ibtissem.Rebai@certara.com",
+        role = c("aut")),
+      person("Vincent", "Duval", email = "Vincent.Duval@certara.com",
+        role = c("aut")),
+      person("Anna", "Largajolli", email = "Anna.Largajolli@certara.com",
+      role = c("aut")),
+      person("James", "Craig", email = "james.craig@certara.com",
+      role = c("aut", "cre")),
+      person("Mike", "Talley", email = "mike.talley@certara.com",
+      role = c("aut")),
+      person("Certara USA, Inc.", role = c("cph","fnd"))
+    )
+Description: Machine learning application for selection of covariate effects
+URL: https://github.com/certara/mlcov
+BugReports: https://github.com/certara/mlcov/issues
+Depends:
+    R (>= 3.5.0),
+    caret,
+    SHAPforxgboost
+Imports:
+    randomForest,
+    Boruta,
+    dplyr,
+    xgboost,
+    glmnet,
+    Metrics,
+    hrbrthemes,
+    Ckmeans.1d.dp,
+    BBmisc,
+    ggplot2,
+    GGally,
+    grid,
+    ggstance,
+    ggpubr,
+    gridExtra
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    vdiffr (>= 1.0.0)
+License: MIT + file LICENSE
+LazyData: true
+Encoding: UTF-8
+VignetteBuilder: knitr
+RoxygenNote: 7.2.3
+Config/testthat/edition: 3
