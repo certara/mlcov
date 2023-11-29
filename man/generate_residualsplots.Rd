@@ -40,6 +40,14 @@ This function generates residual plots for model analysis based on various covar
 }
 \examples{
 # Assuming 'data' is a data frame with the necessary columns
-plots <- generate_residualsplots(data, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, 1)
-
+\dontrun{
+plots <- generate_residualsplots(data, 
+list_pop_param, 
+cov_continuous, 
+cov_factors, 
+result_ML, 
+result_5folds, 
+1,
+seed = 123)
+}
 }
