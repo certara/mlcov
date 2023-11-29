@@ -290,8 +290,16 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 #'
 #' @examples
 #' # Assuming 'data' is a data frame with the necessary columns
-#' plots <- generate_residualsplots(data, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, 1)
-#'
+#' \dontrun{
+#' plots <- generate_residualsplots(data, 
+#' list_pop_param, 
+#' cov_continuous, 
+#' cov_factors, 
+#' result_ML, 
+#' result_5folds, 
+#' 1,
+#' seed = 123)
+#' }
 #' @export
 generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i, seed = 123 ) {
   stopifnot(is.numeric(seed))
