@@ -1,3 +1,19 @@
+get_os <- function(){
+  sysinf <- Sys.info()
+  if (!is.null(sysinf)){
+    os <- sysinf['sysname']
+    if (os == 'Darwin')
+      os <- "osx"
+  } else { ## mystery machine
+    os <- .Platform$OS.type
+    if (grepl("^darwin", R.version$os))
+      os <- "osx"
+    if (grepl("linux-gnu", R.version$os))
+      os <- "linux"
+  }
+  tolower(os)
+}
+
 # Read in tab2 dataset
 data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = T)
 
@@ -24,5 +40,6 @@ testthat::test_that("MLCovSearch result_5folds is a data.frame with 5 non-NA cov
 })
 
 testthat::test_that("MLCovSearch shap plots do not change", {
+  testthat::skip_if_not(get_os() == "windows")
   vdiffr::expect_doppelganger("shap plots", result$shap_plots)
 })

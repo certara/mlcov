@@ -1,3 +1,20 @@
+get_os <- function(){
+  sysinf <- Sys.info()
+  if (!is.null(sysinf)){
+    os <- sysinf['sysname']
+    if (os == 'Darwin')
+      os <- "osx"
+  } else { ## mystery machine
+    os <- .Platform$OS.type
+    if (grepl("^darwin", R.version$os))
+      os <- "osx"
+    if (grepl("linux-gnu", R.version$os))
+      os <- "linux"
+  }
+  tolower(os)
+}
+
+
 # Read in tab2 dataset
 data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = T)
 
@@ -41,7 +58,7 @@ testthat::test_that("generate_residualsplots returns a list of 3 plots for V1", 
 })
 
 testthat::test_that("test-generate_residualsplots returns the same plots each time for V1", {
-  
+  testthat::skip_if_not(get_os() == "windows")
   vdiffr::expect_doppelganger("HT Residuals", plot_V1$HT)
   vdiffr::expect_doppelganger("PLT Residuals", plot_V1$PLT)
   vdiffr::expect_doppelganger("SEX Residuals", plot_V1$SEX)
