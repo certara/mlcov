@@ -10,7 +10,6 @@ devtools::install_github("certara/mlcov")
 # Usage
 
 ```
-set.seed(1545656)
 library(mlcov)
 data_file <- system.file(package = "mlcov", "supplementary", "tab2")
 result <- MLCovSearch(tab = read.table(data_file,skip=1,header=T), #NONMEM output
