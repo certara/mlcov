@@ -1,22 +1,4 @@
-#' @import randomForest
-#' @import Boruta
-#' @import dplyr
-#' @import xgboost
-#' @import caret
-#' @import glmnet
-#' @import Metrics
-#' @import hrbrthemes
-#' @import Ckmeans.1d.dp
-#' @import SHAPforxgboost
-#' @import BBmisc
-#' @import ggplot2
-#' @import GGally
-#' @import grid
-#' @import ggstance
-#' @import ggpubr
-#' @import gridExtra
-#' 
-NULL
+`%>%` <- dplyr::`%>%`
 
 #' MLCovSearch
 #'
@@ -37,16 +19,16 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   stopifnot(requireNamespace("caret", quietly = TRUE))
   # Selection of columns required
   tab <- tab %>%
-    select(ID, all_of(list_pop_param), all_of(cov_continuous), all_of(cov_factors))
+    dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
 
   # In order to have the individual parameter and one point per subject
   dat <- unique(tab) %>%
-    mutate(across(all_of(cov_factors), as.factor))
+    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.factor))
 
   # Data for XGBoost
-  pop_param <- dat %>% select(all_of(list_pop_param))
-  factors <- dat %>% select(all_of(cov_factors))
-  continuous <- dat %>% select(all_of(cov_continuous))
+  pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
+  factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
+  continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
 
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
   modified_columns <- data.frame(matrix(ncol = 0, nrow = nrow(factors)))
@@ -85,7 +67,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
     # Cross-validation
     ## create 5 partition of the data ( using K-1 folds (80%) as the training set and the remaining one fold (20%) as the test set repeating steps for K iterations )
     x <- as.data.frame(x_xgb)
-    folds <- createFolds(seq(1, nrow(x_xgb)), k = 5, list = TRUE, returnTrain = FALSE)
+    folds <- caret::createFolds(seq(1, nrow(x_xgb)), k = 5, list = TRUE, returnTrain = FALSE)
 
     for (j in 1:5) {
       train.ind <- folds[[j]]
@@ -102,7 +84,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
       X <- as.matrix(training)
       Y <- as.matrix(y_xgb_train)
       # Perform k-fold cross-validation to find optimal lambda value
-      cvfit <- cv.glmnet(X, Y, alpha = 1, family = "gaussian")
+      cvfit <- glmnet::cv.glmnet(X, Y, alpha = 1, family = "gaussian")
       # Extract the non-zero coefficients from the model at the optimal value of the regularization parameter
       lasso.coef <- coef(cvfit, s = cvfit$lambda.min)[-1, ]
       selected.vars <- names(lasso.coef[lasso.coef != 0])
@@ -114,19 +96,19 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 
       # Boruta performed on the covariates selected by lasso
       if (length(selected.vars) != 0) {
-        xgb.boruta <- Boruta(
+        xgb.boruta <- Boruta::Boruta(
           train.lasso,
           y = y_xgb_train,
           maxRuns = 200,
           doTrace = 0,
           seed = 42,
-          getImp = getImpXgboost,
+          getImp = Boruta::getImpXgboost,
           nrounds = 200,
           objective = "reg:squarederror"
         )
 
         # Extracting the result of Boruta algorithm (keep confirmed)
-        boruta.df <- attStats(xgb.boruta)
+        boruta.df <- Boruta::attStats(xgb.boruta)
         feature.imp <- row.names(boruta.df)[which(boruta.df$decision == "Confirmed")]
 
         result_5folds[i, j] <- paste(feature.imp, collapse = ', ')
@@ -141,14 +123,14 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   rownames(result_ML) <- list_pop_param
 
   res <- t(result_5folds[,1:5])
-  res <- res %>% na_if("")
+  res <- res %>% dplyr::na_if("")
 
   for (i in list_pop_param) {
     list_cov <- strsplit(res[, i], ",")
     list_cov_nb <- trimws(unlist(list_cov))
     comptage <- as.data.frame(table(list_cov_nb))
     if (nrow(comptage) != 0) {
-    filtered_vars <- comptage %>% filter(Freq >= 2) %>% select(list_cov_nb)
+    filtered_vars <- comptage %>% dplyr::filter(Freq >= 2) %>% dplyr::select(list_cov_nb)
     variable_list <- as.character(filtered_vars$list_cov_nb)
     cov_selected <- paste(variable_list, collapse = ", ")
     result_ML[i, 1] <- cov_selected
@@ -171,8 +153,8 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 
     if (is.na(result_ML[i, 1]) == FALSE){
       list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
-      x.selected_final <- as.matrix(dat_XGB %>% select(all_of(list_cov[[1]])))
-      folds <- createFolds(seq(1,nrow(x.selected_final)), k = 5, list = TRUE, returnTrain = FALSE)
+      x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
+      folds <- caret::createFolds(seq(1,nrow(x.selected_final)), k = 5, list = TRUE, returnTrain = FALSE)
 
       for (j in 1:5){
 
@@ -188,7 +170,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 
 
         if (length(list_cov[[1]]) != 0 ) {
-          xgb.mod <- xgboost(
+          xgb.mod <- xgboost::xgboost(
             data = training,
             label = y.xgm_train,
             nrounds = 200,
@@ -199,7 +181,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
           # predict on the test set with the new model
           y.xgb.pred <- predict(xgb.mod, newdata = testing)
           # evaluate the performance of the model
-          RMSE[j] <- rmse(y.xgm_test,y.xgb.pred)
+          RMSE[j] <- Metrics::rmse(y.xgm_test,y.xgb.pred)
           result_ML[i,2] <- mean(RMSE,na.rm = TRUE)
 
 
@@ -207,7 +189,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
           # Calculate the reference RMSE (baseline model without any covariates) by using the mean of the training y values and comparing it with the test y values
           mean_y <- mean(y.xgm_train)
           y.mean <- rep(mean_y, length(y.xgm_test))
-          RMSE_ref[j] <-  rmse(y.xgm_test,y.mean)
+          RMSE_ref[j] <-  Metrics::rmse(y.xgm_test,y.mean)
           result_ML[i,3] <- mean(RMSE_ref,na.rm = TRUE)
 
 
@@ -225,7 +207,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
     shap_values <- SHAPforxgboost::shap.values(xgb_model = xgb_model, X_train = X_train)
     shap_long <- SHAPforxgboost::shap.prep(xgb_model = xgb_model, X_train = X_train)
     p <- SHAPforxgboost::shap.plot.summary(shap_long)
-    p <- p + ggtitle(param_name)
+    p <- p + ggplot2::ggtitle(param_name)
 
     return(p)
   }
@@ -236,10 +218,10 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 
     if (is.na(result_ML[i, 1]) == FALSE){
     list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
-    x.selected_final <- as.matrix(dat_XGB %>% select(all_of(list_cov[[1]])))
+    x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
 
     if (length(list_cov[[1]]) != 0 ) {
-      xgb.mod_final <- xgboost(
+      xgb.mod_final <- xgboost::xgboost(
         data = x.selected_final,
         label = y_xgb,
         nrounds = 200,
@@ -258,7 +240,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
     }
   }
 
-  combined_plots <- marrangeGrob(grobs = shap_plots,nrow = length(shap_plots),ncol = 1)
+  combined_plots <- gridExtra::marrangeGrob(grobs = shap_plots,nrow = length(shap_plots),ncol = 1)
 
 
 
@@ -307,24 +289,24 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   
   # Selection of columns required
   tab <- tab %>%
-    select(ID, all_of(list_pop_param), all_of(cov_continuous), all_of(cov_factors))
+    dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
 
 
 
   # In order to have the individual parameter and one point per subject
   dat <- unique(tab) %>%
-    mutate(across(all_of(cov_factors), as.factor))
+    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.factor))
 
   # Data for XGBoost
-  pop_param <- dat %>% select(all_of(list_pop_param))
-  factors <- dat %>% select(all_of(cov_factors))
-  continuous <- dat %>% select(all_of(cov_continuous))
+  pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
+  factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
+  continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
 
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
   modified_columns <- data.frame(matrix(ncol = 0, nrow = nrow(factors)))
   for (col in names(factors)) {
     if (is.factor(factors[[col]]) && nlevels(factors[[col]]) > 2) {
-      dmy <- dummyVars(paste0("~", col), data = factors)
+      dmy <- caret::dummyVars(paste0("~", col), data = factors)
       encoded <- data.frame(predict(dmy, newdata = factors))
       modified_columns <- cbind(modified_columns,encoded)
     } else {
@@ -340,12 +322,10 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   full_covariate <- c(cov_continuous, cov_factors)
 
   res <- t(result_5folds[,1:5])
-  res <- res %>% na_if("")
+  res <- res %>% dplyr::na_if("")
 
   result_ML <- as.matrix(result_ML) %>% dplyr::na_if("")
   #result_ML[result_ML == ""] <- NA
-  #result_ML <- as.matrix(result_ML) %>% dplyr::na_if("")
-  
 
   # Assign the independent and dependent covariates
   x_xgb <- data.matrix(dat_XGB[, c(full_covariate_xgm)])
@@ -353,13 +333,13 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   plots_list <- list()  # Initialize the list to store plots
 
   dat <- dat %>%
-    mutate(across(all_of(cov_factors), as.numeric))
+    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.numeric))
   # First case: covariates are selected after the vote
   if (is.na(result_ML[i, 1]) == F)  {
     list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
-    x.selected_final <- as.matrix(dat_XGB %>% select(all_of(list_cov[[1]])))
+    x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
 
-    train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
+    train.ind <- caret::createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
     training <- as.matrix(x.selected_final[train.ind, ])
     colnames(training) <- colnames(x.selected_final)
     testing <-  as.matrix(x.selected_final[-train.ind, ])
@@ -371,7 +351,7 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     y.xgm_test <- y[-train.ind, ]
 
     if (length(list_cov[[1]]) != 0 ) {
-      xgb.mod <- xgboost(
+      xgb.mod <- xgboost::xgboost(
         data = training,
         label = y.xgm_train,
         nrounds = 200,
@@ -388,15 +368,15 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
         if (!(any(grepl(k, list_cov[[1]])))) {
           if (k %in% cov_continuous) {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-            plot <- ggplot(data_plot, aes(x = cov, y = Residuals)) +
-              geom_point() +
+            plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = cov, y = Residuals)) +
+              ggplot2::geom_point() +
               labs(x = k, y = paste("Residuals", i)) +
-              geom_smooth(method = 'lm')
+              ggplot2::geom_smooth(method = 'lm')
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-            plot <- ggplot(data_plot, aes(x = as.factor(cov), y = Residuals)) +
-              geom_boxplot() +
-              geom_point(position = position_jitter(width = 0, height = 0)) +
+            plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = as.factor(cov), y = Residuals)) +
+              ggplot2::geom_boxplot() +
+              ggplot2::geom_point(position = position_jitter(width = 0, height = 0)) +
               labs(x = k, y = paste("Residuals", i))
           }
 
@@ -409,14 +389,14 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
 
           # Try different train indices until a valid p-value is obtained or reach the maximum attempts
           while (is.na(p_value) && attempts <= max_attempts) {
-            train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
+            train.ind <- caret::createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
             training <- x.selected_final[train.ind, ]
             testing <- x.selected_final[-train.ind, ]
 
             y.xgm_train <- y[train.ind, ]
             y.xgm_test <- y[-train.ind, ]
 
-            xgb.mod <- xgboost(
+            xgb.mod <- xgboost::xgboost(
               data = training,
               label = y.xgm_train,
               nrounds = 200,
@@ -461,9 +441,9 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     comptage <- as.data.frame(table(list_cov_nb))
     if (nrow(comptage) != 0) {
 
-    x.selected_final <- as.matrix(dat_XGB %>% select(all_of(comptage$list_cov_nb)))
+    x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(comptage$list_cov_nb)))
 
-    train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
+    train.ind <- caret::createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
     training <- as.matrix(x.selected_final[train.ind, ])
     colnames(training) <- colnames(x.selected_final)
     testing <-  as.matrix(x.selected_final[-train.ind, ])
@@ -475,7 +455,7 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     y.xgm_test <- y[-train.ind, ]
 
     if (length(list_cov_nb) != 0 ) {
-      xgb.mod <- xgboost(
+      xgb.mod <- xgboost::xgboost(
         data = training,
         label = y.xgm_train,
         nrounds = 200,
@@ -491,15 +471,15 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
       for (k in full_covariate) {
         if (k %in% cov_continuous) {
           data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-          plot <- ggplot(data_plot, aes(x = cov, y = Residuals)) +
-            geom_point() +
+          plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = cov, y = Residuals)) +
+            ggplot2::geom_point() +
             labs(x = k, y = paste("Residuals", i)) +
-            geom_smooth(method = 'lm')
+            ggplot2::geom_smooth(method = 'lm')
         } else {
           data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-          plot <- ggplot(data_plot, aes(x = as.factor(cov), y = Residuals)) +
-            geom_boxplot() +
-            geom_point(position = position_jitter(width = 0, height = 0)) +
+          plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = as.factor(cov), y = Residuals)) +
+            ggplot2::geom_boxplot() +
+            ggplot2::geom_point(position = position_jitter(width = 0, height = 0)) +
             labs(x = k, y = paste("Residuals", i))
         }
 
@@ -512,7 +492,7 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
 
         # Try different train indices until a valid p-value is obtained or reach the maximum attempts
         while (is.na(p_value) && attempts <= max_attempts) {
-          train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
+          train.ind <- caret::createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
           training <- as.matrix(x.selected_final[train.ind, ])
           colnames(training) <- colnames(x.selected_final)
           testing <-  as.matrix(x.selected_final[-train.ind, ])
@@ -521,7 +501,7 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
           y.xgm_train <- y[train.ind, ]
           y.xgm_test <- y[-train.ind, ]
 
-          xgb.mod <- xgboost(
+          xgb.mod <- xgboost::xgboost(
             data = training,
             label = y.xgm_train,
             nrounds = 200,
