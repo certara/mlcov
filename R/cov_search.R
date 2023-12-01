@@ -370,14 +370,14 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
             plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = cov, y = Residuals)) +
               ggplot2::geom_point() +
-              labs(x = k, y = paste("Residuals", i)) +
+              ggplot2::labs(x = k, y = paste("Residuals", i)) +
               ggplot2::geom_smooth(method = 'lm')
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
             plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = as.factor(cov), y = Residuals)) +
               ggplot2::geom_boxplot() +
-              ggplot2::geom_point(position = position_jitter(width = 0, height = 0)) +
-              labs(x = k, y = paste("Residuals", i))
+              ggplot2::geom_point(position = ggplot2::position_jitter(width = 0, height = 0)) +
+              ggplot2::labs(x = k, y = paste("Residuals", i))
           }
 
           # Calculate correlation and p-value
@@ -473,14 +473,14 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
           data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
           plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = cov, y = Residuals)) +
             ggplot2::geom_point() +
-            labs(x = k, y = paste("Residuals", i)) +
+            ggplot2::labs(x = k, y = paste("Residuals", i)) +
             ggplot2::geom_smooth(method = 'lm')
         } else {
           data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
           plot <- ggplot2::ggplot(data_plot, ggplot2::aes(x = as.factor(cov), y = Residuals)) +
             ggplot2::geom_boxplot() +
-            ggplot2::geom_point(position = position_jitter(width = 0, height = 0)) +
-            labs(x = k, y = paste("Residuals", i))
+            ggplot2::geom_point(position = ggplot2::position_jitter(width = 0, height = 0)) +
+            ggplot2::labs(x = k, y = paste("Residuals", i))
         }
 
         # Calculate correlation and p-value
