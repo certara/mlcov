@@ -25,21 +25,13 @@ Depends:
     caret,
     SHAPforxgboost
 Imports:
-    randomForest,
     Boruta,
     dplyr,
-    xgboost,
-    glmnet,
-    Metrics,
-    hrbrthemes,
-    Ckmeans.1d.dp,
-    BBmisc,
     ggplot2,
-    GGally,
-    grid,
-    ggstance,
-    ggpubr,
-    gridExtra
+    glmnet,
+    gridExtra,
+    Metrics,
+    xgboost
 Suggests:
     knitr,
     rmarkdown,
