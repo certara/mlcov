@@ -246,8 +246,16 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 
 
   # Return the result_ML table and the SHAP plots for each parameter
-  return(list(result_ML = result_ML, result_5folds=result_5folds, shap_plots = shap_plots))
-}
+  return(
+    list(
+      result_ML = result_ML,
+      result_5folds = result_5folds,
+      shap_plots = shap_plots,
+      list_pop_param = list_pop_param,
+      dat_XGB = dat_XGB
+    ) %>% structure(class = "mlcov_data")
+  )
+} 
 
 
 

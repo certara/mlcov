@@ -18,6 +18,7 @@ result <- MLCovSearch(tab = read.table(data_file,skip=1,header=T), #NONMEM outpu
                                          "FER","CHOL","WBC","LYPCT","RBC",
                                          "HGB","HCT","PLT"),
                       cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ"))
+print(result)
                       
 ```
 
