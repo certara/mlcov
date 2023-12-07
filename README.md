@@ -22,6 +22,21 @@ print(result)
                       
 ```
 
+Generate SHAP plots:
+
+```
+generate_shap_summary_plot(
+      result,
+      x_bound = NULL,
+      dilute = FALSE,
+      scientific = FALSE,
+      my_format = NULL,
+      title = NULL,
+      title.position = 0.5,
+      ylab = NULL,
+      xlab = NULL)
+```
+
 Generate residual plots:
 
 Cl
