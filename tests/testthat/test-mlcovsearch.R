@@ -39,12 +39,6 @@ testthat::test_that("MLCovSearch result_5folds is a data.frame with 5 non-NA cov
   testthat::expect_true(sum(!is.na(result$result_5folds[1,])) == 5)
 })
 
-# This test will need removed when shap plots are removed from MLCovSearch
-testthat::test_that("MLCovSearch shap plots do not change", {
-  testthat::skip_if_not(get_os() == "windows")
-  vdiffr::expect_doppelganger("shap plots", result$shap_plots)
-})
-
 testthat::test_that("MLCovSearch returns an object of class `mlcov_data` with 5 components", {
   
   testthat::expect_true(inherits(result, "mlcov_data"))
