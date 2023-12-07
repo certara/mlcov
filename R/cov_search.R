@@ -199,60 +199,48 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
     }
   }
 
-  # Initialize an empty list to store the SHAP summary plots
-  shap_plots <- list()
-
-  # Create a function to generate SHAP summary plots
-  generate_shap_summary_plot <- function(xgb_model, X_train, param_name) {
-    shap_values <- SHAPforxgboost::shap.values(xgb_model = xgb_model, X_train = X_train)
-    shap_long <- SHAPforxgboost::shap.prep(xgb_model = xgb_model, X_train = X_train)
-    p <- SHAPforxgboost::shap.plot.summary(shap_long)
-    p <- p + ggplot2::ggtitle(param_name)
-
-    return(p)
-  }
+  # Initialize an empty list to store the SHAP summary data and seed information
+  shap_data <- list()
+  shap_seed <- list()
 
   # Interpretation of Selected covariates Beeswarm Plots
   for (i in list_pop_param) {
     y_xgb <- log(dat_XGB[, i])
-
-    if (is.na(result_ML[i, 1]) == FALSE){
-    list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
-    x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
-
-    if (length(list_cov[[1]]) != 0 ) {
-      xgb.mod_final <- xgboost::xgboost(
-        data = x.selected_final,
-        label = y_xgb,
-        nrounds = 200,
-        objective = "reg:squarederror",
-        verbose = 0
-      )
-
-      # Generate SHAP summary plot for the current parameter
-      shap_plot <- generate_shap_summary_plot(
-        xgb_model = xgb.mod_final,
-        X_train = x.selected_final,
-        param_name = i
-      )
-      shap_plots[[i]] <- shap_plot
-    }
+    
+    if (is.na(result_ML[i, 1]) == FALSE) {
+      list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
+      x.selected_final <-
+        as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
+      
+      if (length(list_cov[[1]]) != 0) {
+        xgb.mod_final <- xgboost::xgboost(
+          data = x.selected_final,
+          label = y_xgb,
+          nrounds = 200,
+          objective = "reg:squarederror",
+          verbose = 0
+        )
+        
+        # Generate SHAP summary plot for the current parameter
+        shap_values <- SHAPforxgboost::shap.values(xgb_model = xgb.mod_final, X_train = x.selected_final)
+        shap_long <- SHAPforxgboost::shap.prep(xgb_model = xgb.mod_final, X_train = x.selected_final)
+        
+        # Store shap data and seed
+        shap_data[[i]] <- list(shap_values = shap_values, shap_long = shap_long)
+        shap_seed[[i]] <- .Random.seed
+        
+      }
     }
   }
-
-  combined_plots <- gridExtra::marrangeGrob(grobs = shap_plots,nrow = length(shap_plots),ncol = 1)
-
-
-
 
   # Return the result_ML table and the SHAP plots for each parameter
   return(
     list(
       result_ML = result_ML,
       result_5folds = result_5folds,
-      shap_plots = shap_plots,
       list_pop_param = list_pop_param,
-      dat_XGB = dat_XGB
+      shap_data = shap_data,
+      shap_seed = shap_seed
     ) %>% structure(class = "mlcov_data")
   )
 } 

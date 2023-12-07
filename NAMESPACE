@@ -3,3 +3,7 @@
 S3method(print,mlcov_data)
 export(MLCovSearch)
 export(generate_residualsplots)
+export(generate_shap_summary_plot)
+import(SHAPforxgboost)
+import(ggplot2)
+import(xgboost)
