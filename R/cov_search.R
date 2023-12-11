@@ -16,11 +16,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   # Check that covariates supplied by user exist in the data
   errors <- data_validation(tab, list_pop_param, cov_continuous, cov_factors)
   if (length(errors) > 0) {
-    cat("Stopping due to errors detected in data validation:\n")
-    cat(errors, sep = "\n")
-    return(invisible())
-  } else {
-    cat("Data validation successful, selecting covariates...\n")
+    stop(paste0(errors, sep = "\n"), call. = FALSE)
   }
   
   stopifnot(is.numeric(seed))
@@ -310,6 +306,13 @@ data_validation <- function(tab, list_pop_param, cov_continuous, cov_factors) {
 #' }
 #' @export
 generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i, seed = 123 ) {
+  
+  # Check that covariates supplied by user exist in the data
+  errors <- data_validation(tab, list_pop_param, cov_continuous, cov_factors)
+  if (length(errors) > 0) {
+    stop(paste0(errors, sep = "\n"), call. = FALSE)
+  }
+  
   stopifnot(is.numeric(seed))
   set.seed(seed)
   

@@ -25,19 +25,12 @@ result <- suppressWarnings(MLCovSearch(data, #NONMEM output
                                          "HGB","HCT","PLT"),
                       cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")))
 
-result2 <- suppressWarnings(MLCovSearch(data, #NONMEM output
-                                       list_pop_param = c("clearance"),
-                                       cov_continuous = c("weight"),
-                                       c("dIaB")))
-
-testthat::test_that("Helpful warning messages will be generated when values supplied to the MLCovSearch are absent in the data.frame", {
+testthat::test_that("Error messages will be generated when values supplied to the MLCovSearch are absent in the data.frame", {
   
-  testthat::expect_null(result2)
-  messages <- testthat::capture_output_lines(suppressWarnings(MLCovSearch(data, #NONMEM output
-                                                                  list_pop_param = c("clearance"),
-                                                                  cov_continuous = c("weight"),
-                                                                  cov_factors = c("dIaB"))))
-  testthat::expect_true(length(messages) == 4)
+  testthat::expect_error(MLCovSearch(data, #NONMEM output
+    list_pop_param = c("clearance"),
+    cov_continuous = c("weight"),
+    cov_factors = c("dIaB")))
 })
 
 testthat::test_that("MLCovSearch result_ML is a data.frame with only one covariate selection", {
