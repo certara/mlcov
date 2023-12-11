@@ -64,3 +64,14 @@ testthat::test_that("test-generate_residualsplots returns the same plots each ti
   vdiffr::expect_doppelganger("SEX Residuals", plot_V1$SEX)
 })
 
+testthat::test_that("Error messages will be generated when values supplied to the function are absent in the data.frame", {
+  
+  testthat::expect_error(generate_residualsplots(tab = data,
+                                                 list_pop_param = c("clearance"),
+                                                 cov_continuous = c("weight"),
+                                                 cov_factors = c("dIaB"),
+                                                 result_ML = result$result_ML, #selected covariates for parameter of interest after the voting
+                                                 result_5folds = result$result_5folds, #selected covariates for parameter of interest for each folds
+                                                 i=c('CL')))
+})
+

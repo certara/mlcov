@@ -36,6 +36,12 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
   result_ML <- result$result_ML
   result_5folds <- result$result_5folds
   
+  # Check that covariates supplied by user exist in the data
+  errors <- data_validation(data, list_pop_param, cov_continuous, cov_factors)
+  if (length(errors) > 0) {
+    stop(paste0(errors, sep = "\n"), call. = FALSE)
+  }
+  
   # Selection of columns required
   data <- data %>%
     dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
