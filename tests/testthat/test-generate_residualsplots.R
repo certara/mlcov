@@ -66,7 +66,7 @@ testthat::test_that("test-generate_residualsplots returns the same plots each ti
 
 testthat::test_that("Error messages will be generated when values supplied to the function are absent in the data.frame", {
   
-  testthat::expect_error(generate_residualsplots(tab = read.table(data_file,skip=1,header=T),
+  testthat::expect_error(generate_residualsplots(tab = data,
                                                  list_pop_param = c("clearance"),
                                                  cov_continuous = c("weight"),
                                                  cov_factors = c("dIaB"),

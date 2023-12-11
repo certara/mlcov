@@ -46,5 +46,5 @@ testthat::test_that("generate_residualsplots does not return plots for V1", {
 testthat::test_that("Error messages will be generated when values supplied to the function are absent in the data.frame", {
   
   #Since residualsplots2 function pulls these values from the results object, it should always run correctly. 
-  testthat::expect_no_error(generate_residualsplots2(data = read.table(data_file,skip=1,header=T), result, i = c('V1')))
+  testthat::expect_no_error(generate_residualsplots2(data, result, i = c('V1')))
 })
