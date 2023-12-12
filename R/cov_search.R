@@ -29,19 +29,8 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   continuous <- data %>% dplyr::select(dplyr::all_of(cov_continuous))
 
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
-  modified_columns <- data.frame(matrix(ncol = 0, nrow = nrow(factors)))
-  for (col in names(factors)) {
-    if (is.factor(factors[[col]]) && nlevels(factors[[col]]) > 2) {
-      dmy <- caret::dummyVars(paste0("~", col), data = factors)
-      encoded <- data.frame(predict(dmy, newdata = factors))
-      modified_columns <- cbind(modified_columns,encoded)
-    } else {
-      modified_columns[[col]] <- as.numeric(as.character(factors[[col]]))
-    }
-  }
-
-  dat_XGB <- cbind(pop_param, modified_columns, continuous)
-
+  dat_XGB <- generate_dat_XGB(pop_param, factors, continuous)
+ 
   full_covariate_xgm <- names(dat_XGB)
   full_covariate_xgm <- setdiff(full_covariate_xgm, list_pop_param)
 
@@ -168,14 +157,8 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 
 
         if (length(list_cov[[1]]) != 0 ) {
-          xgb.mod <- xgboost::xgboost(
-            data = training,
-            label = y.xgm_train,
-            nrounds = 200,
-            objective = "reg:squarederror",
-            verbose = 0
-          )
-
+          xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
+          
           # predict on the test set with the new model
           y.xgb.pred <- predict(xgb.mod, newdata = testing)
           # evaluate the performance of the model
@@ -211,13 +194,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
         as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
       
       if (length(list_cov[[1]]) != 0) {
-        xgb.mod_final <- xgboost::xgboost(
-          data = x.selected_final,
-          label = y_xgb,
-          nrounds = 200,
-          objective = "reg:squarederror",
-          verbose = 0
-        )
+        xgb.mod_final <- generate_xgb.mod(data = x.selected_final, label = y_xgb)
         
         # Generate SHAP summary plot for the current parameter
         shap_values <- SHAPforxgboost::shap.values(xgb_model = xgb.mod_final, X_train = x.selected_final)
@@ -291,19 +268,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
 
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
-  modified_columns <- data.frame(matrix(ncol = 0, nrow = nrow(factors)))
-  for (col in names(factors)) {
-    if (is.factor(factors[[col]]) && nlevels(factors[[col]]) > 2) {
-      dmy <- caret::dummyVars(paste0("~", col), data = factors)
-      encoded <- data.frame(predict(dmy, newdata = factors))
-      modified_columns <- cbind(modified_columns,encoded)
-    } else {
-      modified_columns[[col]] <- as.numeric(as.character(factors[[col]]))
-    }
-  }
-
-  dat_XGB <- cbind(pop_param, modified_columns, continuous)
-
+  dat_XGB <- generate_dat_XGB(pop_param, factors, continuous)
+ 
   full_covariate_xgm <- names(dat_XGB)
   full_covariate_xgm <- setdiff(full_covariate_xgm, list_pop_param)
 
@@ -313,7 +279,6 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   res <- res %>% dplyr::na_if("")
 
   result_ML <- as.matrix(result_ML) %>% dplyr::na_if("")
-  #result_ML[result_ML == ""] <- NA
 
   # Assign the independent and dependent covariates
   x_xgb <- data.matrix(dat_XGB[, c(full_covariate_xgm)])
@@ -339,14 +304,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     y.xgm_test <- y[-train.ind, ]
 
     if (length(list_cov[[1]]) != 0 ) {
-      xgb.mod <- xgboost::xgboost(
-        data = training,
-        label = y.xgm_train,
-        nrounds = 200,
-        objective = "reg:squarederror",
-        verbose = 0
-      )
-
+      xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
+      
       # predict on the test set with the new model
       y.xgb.pred <- predict(xgb.mod, newdata = testing)
 
@@ -384,14 +343,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
             y.xgm_train <- y[train.ind, ]
             y.xgm_test <- y[-train.ind, ]
 
-            xgb.mod <- xgboost::xgboost(
-              data = training,
-              label = y.xgm_train,
-              nrounds = 200,
-              objective = "reg:squarederror",
-              verbose = 0
-            )
-
+            xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
+            
             y.xgb.pred <- predict(xgb.mod, newdata = testing)
             residuals <- y.xgb.pred - y.xgm_test
 
@@ -443,14 +396,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
     y.xgm_test <- y[-train.ind, ]
 
     if (length(list_cov_nb) != 0 ) {
-      xgb.mod <- xgboost::xgboost(
-        data = training,
-        label = y.xgm_train,
-        nrounds = 200,
-        objective = "reg:squarederror",
-        verbose = 0
-      )
-
+      xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
+      
       # predict on the test set with the new model
       y.xgb.pred <- predict(xgb.mod, newdata = testing)
 
@@ -489,14 +436,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
           y.xgm_train <- y[train.ind, ]
           y.xgm_test <- y[-train.ind, ]
 
-          xgb.mod <- xgboost::xgboost(
-            data = training,
-            label = y.xgm_train,
-            nrounds = 200,
-            objective = "reg:squarederror",
-            verbose = 0
-          )
-
+          xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
+         
           y.xgb.pred <- predict(xgb.mod, newdata = testing)
           residuals <- y.xgb.pred - y.xgm_test
 
