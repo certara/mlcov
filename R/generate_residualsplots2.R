@@ -42,15 +42,8 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
     stop(paste0(errors, sep = "\n"), call. = FALSE)
   }
   
-  # Selection of columns required
-  data <- data %>%
-    dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
-  
-  # In order to have the individual parameter and one point per subject
-  dat <- unique(data) %>%
-    dplyr::mutate(across(dplyr::all_of(cov_factors), as.factor))
-  
-  # Data for XGBoost
+  # Select columns and generate data for XGBoost
+  dat <- col_select(data, list_pop_param, cov_continuous, cov_factors)
   pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
   factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
   continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
@@ -85,7 +78,7 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
   plots_list <- list()  # Initialize the list to store plots
   
   dat <- dat %>%
-    dplyr::mutate(across(dplyr::all_of(cov_factors), as.numeric))
+    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.numeric))
   
   # First case: covariates are selected after the vote
   if (is.na(result_ML[i, 1]) == F)  {

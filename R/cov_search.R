@@ -23,18 +23,12 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   set.seed(seed)
 
   stopifnot(requireNamespace("caret", quietly = TRUE))
-  # Selection of columns required
-  tab <- tab %>%
-    dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
-
-  # In order to have the individual parameter and one point per subject
-  dat <- unique(tab) %>%
-    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.factor))
-
-  # Data for XGBoost
-  pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
-  factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
-  continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
+  
+  # Select columns and generate data for XGBoost
+  data <- col_select(tab, list_pop_param, cov_continuous, cov_factors)
+  pop_param <- data %>% dplyr::select(dplyr::all_of(list_pop_param))
+  factors <- data %>% dplyr::select(dplyr::all_of(cov_factors))
+  continuous <- data %>% dplyr::select(dplyr::all_of(cov_continuous))
 
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
   modified_columns <- data.frame(matrix(ncol = 0, nrow = nrow(factors)))
@@ -253,30 +247,6 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   )
 } 
 
-data_validation <- function(tab, list_pop_param, cov_continuous, cov_factors) {
-  errors <- c()
-  
-  for (i in 1:3) {
-    vectors <- list(list_pop_param, cov_continuous, cov_factors)
-    vector_names <- c("list_pop_param", "cov_continuous", "cov_factors")
-    
-    missing_values <- setdiff(vectors[[i]], colnames(tab))
-    
-    if (length(missing_values) > 0) {
-      error_message <-
-        paste( "The following values from", vector_names[[i]], "are missing in the dataset:", toString(missing_values))
-      
-      errors <- c(errors, error_message)
-    }
-  }
-  return(errors)
-  
-}
-
-
-
-
-
 
 
 #' Generate Residual Plots for Model Analysis
@@ -316,17 +286,8 @@ generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_fac
   stopifnot(is.numeric(seed))
   set.seed(seed)
   
-  # Selection of columns required
-  tab <- tab %>%
-    dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
-
-
-
-  # In order to have the individual parameter and one point per subject
-  dat <- unique(tab) %>%
-    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.factor))
-
-  # Data for XGBoost
+  # Select columns and generate data for XGBoost
+  dat <- col_select(tab, list_pop_param, cov_continuous, cov_factors)
   pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
   factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
   continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
