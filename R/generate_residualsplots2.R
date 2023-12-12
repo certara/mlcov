@@ -37,10 +37,11 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
   result_5folds <- result$result_5folds
   
   # Check that covariates supplied by user exist in the data
-  errors <- data_validation(data, list_pop_param, cov_continuous, cov_factors)
-  if (length(errors) > 0) {
-    stop(paste0(errors, sep = "\n"), call. = FALSE)
-  }
+  data_validation(tab, list_pop_param, cov_continuous, cov_factors)
+  # errors <- data_validation(data, list_pop_param, cov_continuous, cov_factors)
+  # if (length(errors) > 0) {
+  #   stop(paste0(errors, sep = "\n"), call. = FALSE)
+  # }
   
   # Select columns and generate data for XGBoost
   dat <- col_select(data, list_pop_param, cov_continuous, cov_factors)

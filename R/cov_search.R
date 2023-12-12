@@ -14,11 +14,9 @@
 MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed = 123) {
   
   # Check that covariates supplied by user exist in the data
-  errors <- data_validation(tab, list_pop_param, cov_continuous, cov_factors)
-  if (length(errors) > 0) {
-    stop(paste0(errors, sep = "\n"), call. = FALSE)
-  }
-  
+  data_validation(tab, list_pop_param, cov_continuous, cov_factors)
+
+  # Set seed
   stopifnot(is.numeric(seed))
   set.seed(seed)
 
@@ -278,13 +276,13 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
 generate_residualsplots <- function(tab, list_pop_param, cov_continuous, cov_factors, result_ML, result_5folds, i, seed = 123 ) {
   
   # Check that covariates supplied by user exist in the data
-  errors <- data_validation(tab, list_pop_param, cov_continuous, cov_factors)
-  if (length(errors) > 0) {
-    stop(paste0(errors, sep = "\n"), call. = FALSE)
-  }
+  data_validation(tab, list_pop_param, cov_continuous, cov_factors)
   
-  stopifnot(is.numeric(seed))
-  set.seed(seed)
+  # Set seed
+  if (!is.null(seed)) {
+    stopifnot(is.numeric(seed))
+    set.seed(seed)
+  }
   
   # Select columns and generate data for XGBoost
   dat <- col_select(tab, list_pop_param, cov_continuous, cov_factors)
