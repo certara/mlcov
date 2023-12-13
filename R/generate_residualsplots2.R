@@ -37,38 +37,17 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
   result_5folds <- result$result_5folds
   
   # Check that covariates supplied by user exist in the data
-  errors <- data_validation(data, list_pop_param, cov_continuous, cov_factors)
-  if (length(errors) > 0) {
-    stop(paste0(errors, sep = "\n"), call. = FALSE)
-  }
+  data_validation(data, list_pop_param, cov_continuous, cov_factors)
   
-  # Selection of columns required
-  data <- data %>%
-    dplyr::select(ID, dplyr::all_of(list_pop_param), dplyr::all_of(cov_continuous), dplyr::all_of(cov_factors))
-  
-  # In order to have the individual parameter and one point per subject
-  dat <- unique(data) %>%
-    dplyr::mutate(across(dplyr::all_of(cov_factors), as.factor))
-  
-  # Data for XGBoost
+  # Select columns and generate data for XGBoost
+  dat <- col_select(data, list_pop_param, cov_continuous, cov_factors)
   pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
   factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
   continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
   
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
-  modified_columns <- data.frame(matrix(ncol = 0, nrow = nrow(factors)))
-  for (col in names(factors)) {
-    if (is.factor(factors[[col]]) && nlevels(factors[[col]]) > 2) {
-      dmy <- caret::dummyVars(paste0("~", col), data = factors)
-      encoded <- data.frame(predict(dmy, newdata = factors))
-      modified_columns <- cbind(modified_columns,encoded)
-    } else {
-      modified_columns[[col]] <- as.numeric(as.character(factors[[col]]))
-    }
-  }
-  
-  dat_XGB <- cbind(pop_param, modified_columns, continuous)
-  
+  dat_XGB <- generate_dat_XGB(pop_param, factors, continuous)
+ 
   full_covariate_xgm <- names(dat_XGB)
   full_covariate_xgm <- setdiff(full_covariate_xgm, list_pop_param)
   
@@ -85,7 +64,7 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
   plots_list <- list()  # Initialize the list to store plots
   
   dat <- dat %>%
-    dplyr::mutate(across(dplyr::all_of(cov_factors), as.numeric))
+    dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.numeric))
   
   # First case: covariates are selected after the vote
   if (is.na(result_ML[i, 1]) == F)  {
@@ -104,13 +83,7 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
     y.xgm_test <- y[-train.ind, ]
     
     if (length(list_cov[[1]]) != 0 ) {
-      xgb.mod <- xgboost::xgboost(
-        data = training,
-        label = y.xgm_train,
-        nrounds = 200,
-        objective = "reg:squarederror",
-        verbose = 0
-      )
+      xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
       
       # predict on the test set with the new model
       y.xgb.pred <- predict(xgb.mod, newdata = testing)
@@ -157,14 +130,8 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
             y.xgm_train <- y[train.ind, ]
             y.xgm_test <- y[-train.ind, ]
             
-            xgb.mod <- xgboost::xgboost(
-              data = training,
-              label = y.xgm_train,
-              nrounds = 200,
-              objective = "reg:squarederror",
-              verbose = 0
-            )
-            
+            xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
+           
             y.xgb.pred <- predict(xgb.mod, newdata = testing)
             residuals <- y.xgb.pred - y.xgm_test
             
@@ -238,13 +205,7 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
       y.xgm_test <- y[-train.ind, ]
       
       if (length(list_cov_nb) != 0 ) {
-        xgb.mod <- xgboost::xgboost(
-          data = training,
-          label = y.xgm_train,
-          nrounds = 200,
-          objective = "reg:squarederror",
-          verbose = 0
-        )
+        xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
         
         # predict on the test set with the new model
         y.xgb.pred <- predict(xgb.mod, newdata = testing)
@@ -286,13 +247,7 @@ generate_residualsplots2 <- function(data, result, i, seed = NULL) {
             y.xgm_train <- y[train.ind, ]
             y.xgm_test <- y[-train.ind, ]
             
-            xgb.mod <- xgboost::xgboost(
-              data = training,
-              label = y.xgm_train,
-              nrounds = 200,
-              objective = "reg:squarederror",
-              verbose = 0
-            )
+            xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
             
             y.xgb.pred <- predict(xgb.mod, newdata = testing)
             residuals <- y.xgb.pred - y.xgm_test
