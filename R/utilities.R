@@ -38,7 +38,6 @@ data_validation <- function(tab, list_pop_param, cov_continuous, cov_factors) {
       errors <- c(errors, error_message)
     }
   }
-  return(errors)
   
   if (length(errors) > 0) {
     stop(paste0(errors, sep = "\n"), call. = FALSE)
