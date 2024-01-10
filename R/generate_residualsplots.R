@@ -21,7 +21,7 @@
 #' }
 #' @export
 #' 
-generate_residualsplots2 <- function(data, result, i, seed = NULL) {
+generate_residualsplots <- function(data, result, i, seed = NULL) {
   
   stopifnot(inherits(result, "mlcov_data"))
   
