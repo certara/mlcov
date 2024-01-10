@@ -42,11 +42,11 @@ Generate residual plots:
 Cl
 
 ```
-generate_residualsplots2(data = read.table(data_file,skip=1,header=T), result, i = c('CL'))
+generate_residualsplots(data = read.table(data_file,skip=1,header=T), result, i = c('CL'))
 ```
 
 V1
 
 ```
-generate_residualsplots2(data = read.table(data_file,skip=1,header=T), result, i = c('V1'))
+generate_residualsplots(data = read.table(data_file,skip=1,header=T), result, i = c('V1'))
 ```

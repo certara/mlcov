@@ -27,13 +27,13 @@ result <- suppressWarnings(MLCovSearch(data, #NONMEM output
                                        cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")))
 
 # Generate plots
-plot_CL <- suppressWarnings(generate_residualsplots2(data,
-                                                     result,
-                                                     i = c('CL')))
+plot_CL <- suppressWarnings(generate_residualsplots(data,
+                                                    result,
+                                                    i = c('CL')))
 
-plot_V1 <- suppressWarnings(generate_residualsplots2(data,
-                                                     result,
-                                                     i = c('V1')))
+plot_V1 <- suppressWarnings(generate_residualsplots(data,
+                                                    result,
+                                                    i = c('V1')))
 
 testthat::test_that("generate_residualsplots does not return plots for Cl", {
   testthat::expect_null(plot_CL)
@@ -45,6 +45,6 @@ testthat::test_that("generate_residualsplots does not return plots for V1", {
 
 testthat::test_that("Error messages will be generated when values supplied to the function are absent in the data.frame", {
   
-  #Since residualsplots2 function pulls these values from the results object, it should always run correctly. 
-  testthat::expect_no_error(generate_residualsplots2(data, result, i = c('V1')))
+  #Since function pulls these values from the results object, it should always run correctly. 
+  testthat::expect_no_error(generate_residualsplots(data, result, i = c('V1')))
 })
