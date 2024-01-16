@@ -55,7 +55,7 @@ generate_dat_XGB <- function(pop_param, factors, continuous) {
     if (is.factor(factors[[col]]) && nlevels(factors[[col]]) > 2) {
       dmy <- caret::dummyVars(paste0("~", col), data = factors)
       encoded <- data.frame(predict(dmy, newdata = factors))
-      modified_columns <- cbind(modified_columns,encoded)
+      modified_columns <- cbind(modified_columns,encoded[,-1])
     } else {
       modified_columns[[col]] <- as.numeric(as.character(factors[[col]]))
     }
