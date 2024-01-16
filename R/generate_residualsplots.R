@@ -158,10 +158,10 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             
           }
           
-          #if 5 of the 10 pvalues are significant, we draw the residuals plots
-          if (sum(p_value_count <= 0.05) >= 5){
+          #if 6 of the 10 pvalues are significant, we draw the residuals plots
+          if (sum(p_value_count[!is.na(p_value_count)] <= 0.05) >= 6){
             position_first_below_0.05 <- which.max(p_value_count <=  0.05)
-            value_first_below_0.05 <- p_value_count[position_first_above_0.05]
+            value_first_below_0.05 <- p_value_count[position_first_below_0.05]
             
             plot <- plots_listK[[position_first_below_0.05]]
             # Add p-value as an annotation in the top-right corner
@@ -170,7 +170,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
                 "text",
                 x = Inf,
                 y = Inf,
-                label = paste("p-value =", round(p_value, 4)),
+                label = paste("p-value =", round(value_first_below_0.05, 5)),
                 hjust = 1,
                 vjust = 1,
                 size = 4
@@ -261,10 +261,10 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             attempts <- attempts + 1
           }
           
-          #if 5 of the 10 pvalues are significant, we draw the residuals plots
-          if (sum(p_value_count <= 0.05) >= 5){
+          #if 6 of the 10 pvalues are significant, we draw the residuals plots
+          if  (sum(p_value_count[!is.na(p_value_count)] <= 0.05) >= 6){
             position_first_below_0.05 <- which.max(p_value_count <=  0.05)
-            value_first_below_0.05 <- p_value_count[position_first_above_0.05]
+            value_first_below_0.05 <- p_value_count[position_first_below_0.05]
             
             plot <- plots_listK[[position_first_below_0.05]]
             # Add p-value as an annotation in the top-right corner
@@ -273,7 +273,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
                 "text",
                 x = Inf,
                 y = Inf,
-                label = paste("p-value =", round(p_value, 4)),
+                label = paste("p-value =", round(value_first_below_0.05, 5)),
                 hjust = 1,
                 vjust = 1,
                 size = 4
