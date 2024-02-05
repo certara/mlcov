@@ -31,7 +31,8 @@ Imports:
     glmnet,
     gridExtra,
     Metrics,
-    xgboost
+    xgboost,
+    ggstatsplot
 Suggests:
     knitr,
     rmarkdown,
