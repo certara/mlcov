@@ -104,7 +104,8 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
               labs(x = k, y = paste("Residuals", i)) +
               theme_bw()
             
-            p_value <- plot$plot_env$cor_test_result$p.value
+            cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
+            p_value <- cor_test_result$p.value
             
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
@@ -158,7 +159,8 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
                 labs(x = k, y = paste("Residuals", i)) +
                 theme_bw()
               
-              p_value2 <- plot2$plot_env$cor_test_result$p.value
+              cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
+              p_value2 <- cor_test_result$p.value
               
             } else {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
@@ -238,7 +240,8 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
               labs(x = k, y = paste("Residuals", i)) +
               theme_bw()
             
-            p_value <- plot$plot_env$cor_test_result$p.value
+            cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
+            p_value <- cor_test_result$p.value
             
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
@@ -291,7 +294,8 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
                 labs(x = k, y = paste("Residuals", i)) +
                 theme_bw()
               
-              p_value2 <- plot2$plot_env$cor_test_result$p.value
+              cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
+              p_value2 <- cor_test_result$p.value
               
             } else {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
