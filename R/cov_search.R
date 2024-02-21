@@ -73,7 +73,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
       # Perform k-fold cross-validation to find optimal lambda value
       cvfit <- glmnet::cv.glmnet(X, Y, alpha = 1, family = "gaussian")
       # Extract the non-zero coefficients from the model at the optimal value of the regularization parameter
-      lasso.coef <- coef(cvfit, s = cvfit$lambda.min)[-1, ]
+      lasso.coef <- coef(cvfit, s = cvfit$lambda.1se)[-1, ]
       selected.vars <- names(lasso.coef[lasso.coef != 0])
 
       # create new training and testing sets using only selected covariates by lasso
