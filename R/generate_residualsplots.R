@@ -96,13 +96,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
         if (!(any(grepl(k, list_cov[[1]])))) {
           if (k %in% cov_continuous) {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-            plot <- ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
-              geom_point(alpha = 0.3)+
-              geom_smooth(method = "lm")+
+            plot <- ggplot2::ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
+              ggplot2::geom_point(alpha = 0.3)+
+              ggplot2::geom_smooth(method = "lm")+
               ggpmisc::stat_poly_line() +
               ggpmisc::stat_correlation(mapping = ggpmisc::use_label(c("R", "t", "P", "n"))) +
-              labs(x = k, y = paste("Residuals", i)) +
-              theme_bw()
+              ggplot2::labs(x = k, y = paste("Residuals", i)) +
+              ggplot2::theme_bw()
             
             cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
             p_value <- cor_test_result$p.value
@@ -110,11 +110,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
             plot <- ggstatsplot::ggbetweenstats(data = data_plot,
-                                                x       =  `cov`,
-                                                y       = `Residuals` ,
-                                                type    = "nonparametric",     # nonparametric   parametric    robust   bayes
-                                                xlab   = k,
-                                                ylab    =  paste("Residuals", i))  + ggplot2::theme_bw() + theme(legend.position="none")
+                                                x    = `cov`,
+                                                y    = `Residuals` ,
+                                                type = "nonparametric",     # nonparametric   parametric    robust   bayes
+                                                xlab = k,
+                                                ylab = paste("Residuals", i)) + 
+              ggplot2::theme_bw() + 
+              ggplot2::theme(legend.position="none")
             
             p_value <- plot$plot_env$subtitle_df$p.value
           }
@@ -128,7 +130,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
           
           # Try different train indices until we have 10 different pvalues
           while (attempts <= max_attempts) {
-            train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
+            train.ind <- caret::createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
             training <- as.matrix(x.selected_final[train.ind, ])
             colnames(training) <- colnames(x.selected_final)
             testing <-  as.matrix(x.selected_final[-train.ind, ])
@@ -138,7 +140,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             y.xgm_train <- y[train.ind, ]
             y.xgm_test <- y[-train.ind, ]
             
-            xgb.mod <- xgboost(
+            xgb.mod <- xgboost::xgboost(
               data = training,
               label = y.xgm_train,
               nrounds = 200,
@@ -151,13 +153,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             
             if (k %in% cov_continuous) {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-              plot2 <- ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
-                geom_point(alpha = 0.3)+
-                geom_smooth(method = "lm")+
+              plot2 <- ggplot2::ggplot(data_plot, aes(x = `cov`, y = `Residuals`)) +
+                ggplot2::geom_point(alpha = 0.3)+
+                ggplot2::geom_smooth(method = "lm")+
                 ggpmisc::stat_poly_line() +
                 ggpmisc::stat_correlation(mapping = ggpmisc::use_label(c("R", "t", "P", "n"))) +
-                labs(x = k, y = paste("Residuals", i)) +
-                theme_bw()
+                ggplot2::labs(x = k, y = paste("Residuals", i)) +
+                ggplot2::theme_bw()
               
               cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
               p_value2 <- cor_test_result$p.value
@@ -165,11 +167,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             } else {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
               plot2 <- ggstatsplot::ggbetweenstats(data = data_plot,
-                                                  x       =  `cov`,
-                                                  y       = `Residuals` ,
-                                                  type    = "nonparametric",     # nonparametric   parametric    robust   bayes
-                                                  xlab   = k,
-                                                  ylab    =  paste("Residuals", i))  + ggplot2::theme_bw() + theme(legend.position="none")
+                                                  x     = `cov`,
+                                                  y     = `Residuals` ,
+                                                  type  = "nonparametric",     # nonparametric   parametric    robust   bayes
+                                                  xlab  = k,
+                                                  ylab  = paste("Residuals", i)) + 
+                ggplot2::theme_bw() + 
+                ggplot2::theme(legend.position="none")
               
               p_value2 <- plot2$plot_env$subtitle_df$p.value
             }
@@ -232,13 +236,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
           plots_listK <- list() 
           if (k %in% cov_continuous) {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-            plot <- ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
-              geom_point(alpha = 0.3)+
-              geom_smooth(method = "lm")+
+            plot <- ggplot2::ggplot(data_plot, aes(x = `cov`, y = `Residuals`)) +
+              ggplot2::geom_point(alpha = 0.3)+
+              ggplot2::geom_smooth(method = "lm")+
               ggpmisc::stat_poly_line() +
               ggpmisc::stat_correlation(mapping = ggpmisc::use_label(c("R", "t", "P", "n"))) +
-              labs(x = k, y = paste("Residuals", i)) +
-              theme_bw()
+              ggplot2::labs(x = k, y = paste("Residuals", i)) +
+              ggplot2::theme_bw()
             
             cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
             p_value <- cor_test_result$p.value
@@ -246,11 +250,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
             plot <- ggstatsplot::ggbetweenstats(data = data_plot,
-                                                 x       =  `cov`,
-                                                 y       = `Residuals` ,
-                                                 type    = "nonparametric",     # nonparametric   parametric    robust   bayes
-                                                 xlab   = k,
-                                                 ylab    =  paste("Residuals", i))  + ggplot2::theme_bw() + theme(legend.position="none")
+                                                x    = `cov`,
+                                                y    = `Residuals`,
+                                                type = "nonparametric",     # nonparametric   parametric    robust   bayes
+                                                xlab = k,
+                                                ylab = paste("Residuals", i)) + 
+              ggplot2::theme_bw() + 
+              ggplot2::theme(legend.position="none")
             
             p_value <- plot$plot_env$subtitle_df$p.value
           }
@@ -264,7 +270,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
           
           # Try different train indices until we have 10 different pvalues
           while (attempts <= max_attempts) {
-            train.ind <- createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
+            train.ind <- caret::createDataPartition(seq(1, nrow(x.selected_final)), times = 1, p = 0.8, list = FALSE)
             training <- as.matrix(x.selected_final[train.ind, ])
             colnames(training) <- colnames(x.selected_final)
             testing <-  as.matrix(x.selected_final[-train.ind, ])
@@ -273,7 +279,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             y.xgm_train <- y[train.ind, ]
             y.xgm_test <- y[-train.ind, ]
             
-            xgb.mod <- xgboost(
+            xgb.mod <- xgboost::xgboost(
               data = training,
               label = y.xgm_train,
               nrounds = 200,
@@ -286,13 +292,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             
             if (k %in% cov_continuous) {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-              plot2 <- ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
-                geom_point(alpha = 0.3)+
-                geom_smooth(method = "lm")+
+              plot2 <- ggplot2::ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
+                ggplot2::geom_point(alpha = 0.3)+
+                ggplot2::geom_smooth(method = "lm")+
                 ggpmisc::stat_poly_line() +
                 ggpmisc::stat_correlation(mapping = ggpmisc::use_label(c("R", "t", "P", "n"))) +
-                labs(x = k, y = paste("Residuals", i)) +
-                theme_bw()
+                ggplot2::labs(x = k, y = paste("Residuals", i)) +
+                ggplot2::theme_bw()
               
               cor_test_result <- cor.test(data_plot$Residuals, data_plot$cov)
               p_value2 <- cor_test_result$p.value
@@ -300,11 +306,13 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
             } else {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
               plot2 <- ggstatsplot::ggbetweenstats(data = data_plot,
-                                                   x       =  `cov`,
-                                                   y       = `Residuals` ,
-                                                   type    = "nonparametric",     # nonparametric   parametric    robust   bayes
-                                                   xlab   = k,
-                                                   ylab    =  paste("Residuals", i))  + ggplot2::theme_bw() + theme(legend.position="none")
+                                                   x    = `cov`,
+                                                   y    = `Residuals` ,
+                                                   type = "nonparametric",     # nonparametric   parametric    robust   bayes
+                                                   xlab = k,
+                                                   ylab = paste("Residuals", i)) + 
+                ggplot2::theme_bw() + 
+                ggplot2::theme(legend.position="none")
               
               p_value2 <- plot2$plot_env$subtitle_df$p.value
             }
