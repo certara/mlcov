@@ -9,7 +9,7 @@ generate_residuals_plot(data, result, i, seed = NULL)
 \arguments{
 \item{data}{Data frame containing the input variables.}
 
-\item{result}{Results object of class "mlcov_data", obtained from the MLCovSearch function.}
+\item{result}{Results object of class "mlcov_data", obtained from the ml_cov_search function.}
 
 \item{i}{An integer indicating the index of the parameter of interest.}
 

@@ -1,9 +1,9 @@
 `%>%` <- dplyr::`%>%`
 
-#' MLCovSearch
+#' ml_cov_search
 #'
-#' @param tab A data frame containing the data to be analyzed
-#' @param list_pop_param Parameters
+#' @param data A data frame containing the data to be analyzed
+#' @param pop_param Character vector of population parameter names
 #' @param cov_continuous Character vector of continuous covariate names
 #' @param cov_factors Character vector of categorical or occasion covariate names
 #' @param seed Numeric value for usage of \code{set.seed()} inside function.
@@ -11,10 +11,10 @@
 #' @return list
 #' @export
 #'
-MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed = 123) {
+ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 123) {
   
   # Check that covariates supplied by user exist in the data
-  data_validation(tab, list_pop_param, cov_continuous, cov_factors)
+  data_validation(data, pop_param, cov_continuous, cov_factors)
 
   # Set seed
   stopifnot(is.numeric(seed))
@@ -23,8 +23,8 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   stopifnot(requireNamespace("caret", quietly = TRUE))
   
   # Select columns and generate data for XGBoost
-  data <- col_select(tab, list_pop_param, cov_continuous, cov_factors)
-  pop_param <- data %>% dplyr::select(dplyr::all_of(list_pop_param))
+  data <- col_select(data, pop_param, cov_continuous, cov_factors)
+  pop_param <- data %>% dplyr::select(dplyr::all_of(pop_param))
   factors <- data %>% dplyr::select(dplyr::all_of(cov_factors))
   continuous <- data %>% dplyr::select(dplyr::all_of(cov_continuous))
 
@@ -32,22 +32,22 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   dat_XGB <- generate_dat_XGB(pop_param, factors, continuous)
  
   full_covariate_xgm <- names(dat_XGB)
-  full_covariate_xgm <- setdiff(full_covariate_xgm, list_pop_param)
+  full_covariate_xgm <- setdiff(full_covariate_xgm, pop_param)
 
   # Assign the independent and dependent covariates
   x_xgb <- data.matrix(dat_XGB[, c(full_covariate_xgm)])
 
   # Creation of results datasets for selected covariates of the 5 folds
   result_5folds <- data.frame(
-    fold1 = rep(NA, length(list_pop_param)),
-    fold2 = rep(NA, length(list_pop_param)),
-    fold3 = rep(NA, length(list_pop_param)),
-    fold4 = rep(NA, length(list_pop_param)),
-    fold5 = rep(NA, length(list_pop_param))
+    fold1 = rep(NA, length(pop_param)),
+    fold2 = rep(NA, length(pop_param)),
+    fold3 = rep(NA, length(pop_param)),
+    fold4 = rep(NA, length(pop_param)),
+    fold5 = rep(NA, length(pop_param))
   )
-  rownames(result_5folds) <- list_pop_param
+  rownames(result_5folds) <- pop_param
 
-  for (i in list_pop_param) {
+  for (i in pop_param) {
 
     y_xgb <- log(dat_XGB[, i])
 
@@ -106,13 +106,13 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   }
 
   # Final covariate selection with a voting mechanism
-  result_ML <- data.frame(cov_selected = rep(NA, length(list_pop_param)))
-  rownames(result_ML) <- list_pop_param
+  result_ML <- data.frame(cov_selected = rep(NA, length(pop_param)))
+  rownames(result_ML) <- pop_param
 
   res <- t(result_5folds[,1:5])
   res <- res %>% dplyr::na_if("")
 
-  for (i in list_pop_param) {
+  for (i in pop_param) {
     list_cov <- strsplit(res[, i], ",")
     list_cov_nb <- trimws(unlist(list_cov))
     comptage <- as.data.frame(table(list_cov_nb))
@@ -125,14 +125,14 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   }
 
 
-  result_ML$RMSE <- rep(NA,length(list_pop_param))
-  result_ML$RMSE_ref <- rep(NA,length(list_pop_param))
+  result_ML$RMSE <- rep(NA,length(pop_param))
+  result_ML$RMSE_ref <- rep(NA,length(pop_param))
 
 
 
   # Evaluation of model with selected covariates
 
-  for (i in list_pop_param) {
+  for (i in pop_param) {
     y_xgb <- log(dat_XGB[, i])
 
     RMSE <- rep(NA,5)
@@ -185,7 +185,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
   shap_seed <- list()
 
   # Interpretation of Selected covariates Beeswarm Plots
-  for (i in list_pop_param) {
+  for (i in pop_param) {
     y_xgb <- log(dat_XGB[, i])
     
     if (is.na(result_ML[i, 1]) == FALSE) {
@@ -213,7 +213,7 @@ MLCovSearch <- function(tab, list_pop_param, cov_continuous, cov_factors, seed =
     list(
       result_ML = result_ML,
       result_5folds = result_5folds,
-      list_pop_param = list_pop_param,
+      pop_param = pop_param,
       cov_continuous = cov_continuous, 
       cov_factors = cov_factors,
       shap_data = shap_data,

@@ -3,9 +3,9 @@
 #' Generate Residual Plots for Model Analysis
 #'
 #' This function generates residual plots for model analysis based on various covariates and model results. It performs data preprocessing, model fitting using XGBoost, and generates plots to visualize the residuals against the covariates.
-#' @inheritParams MLCovSearch
+#' @inheritParams ml_cov_search
 #' @param data Data frame containing the input variables.
-#' @param result Results object of class "mlcov_data", obtained from the MLCovSearch function.
+#' @param result Results object of class "mlcov_data", obtained from the ml_cov_search function.
 #' @param i An integer indicating the index of the parameter of interest.
 #' @param seed Numeric value for usage of \code{set.seed()} inside function.
 #'
@@ -34,18 +34,18 @@ generate_residuals_plot <- function(data, result, i, seed = NULL) {
     set.seed(seed)
   }
   
-  list_pop_param <- result$list_pop_param
+  pop_param <- result$pop_param
   cov_continuous <- result$cov_continuous
   cov_factors <- result$cov_factors
   result_ML <- result$result_ML
   result_5folds <- result$result_5folds
   
   # Check that covariates supplied by user exist in the data
-  data_validation(data, list_pop_param, cov_continuous, cov_factors)
+  data_validation(data, pop_param, cov_continuous, cov_factors)
   
   # Select columns and generate data for XGBoost
-  dat <- col_select(data, list_pop_param, cov_continuous, cov_factors)
-  pop_param <- dat %>% dplyr::select(dplyr::all_of(list_pop_param))
+  dat <- col_select(data, pop_param, cov_continuous, cov_factors)
+  pop_param <- dat %>% dplyr::select(dplyr::all_of(pop_param))
   factors <- dat %>% dplyr::select(dplyr::all_of(cov_factors))
   continuous <- dat %>% dplyr::select(dplyr::all_of(cov_continuous))
   
@@ -53,7 +53,7 @@ generate_residuals_plot <- function(data, result, i, seed = NULL) {
   dat_XGB <- generate_dat_XGB(pop_param, factors, continuous)
  
   full_covariate_xgm <- names(dat_XGB)
-  full_covariate_xgm <- setdiff(full_covariate_xgm, list_pop_param)
+  full_covariate_xgm <- setdiff(full_covariate_xgm, pop_param)
   
   full_covariate <- c(cov_continuous, cov_factors)
   

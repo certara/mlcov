@@ -18,22 +18,22 @@ get_os <- function(){
 data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = TRUE)
 
 # Search and select covariates. This function can take a few minutes to run
-result <- suppressWarnings(MLCovSearch(data, #NONMEM output
-                      list_pop_param = c("V1","CL"),
-                      cov_continuous = c("AGE","WT","HT","BMI","ALB","CRT",
-                                         "FER","CHOL","WBC","LYPCT","RBC",
-                                         "HGB","HCT","PLT"),
-                      cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")))
+result <- suppressWarnings(ml_cov_search(data, #NONMEM output
+                                         pop_param = c("V1","CL"),
+                                         cov_continuous = c("AGE","WT","HT","BMI","ALB","CRT",
+                                                            "FER","CHOL","WBC","LYPCT","RBC",
+                                                            "HGB","HCT","PLT"),
+                                         cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")))
 
-testthat::test_that("Error messages will be generated when values supplied to the MLCovSearch are absent in the data.frame", {
+testthat::test_that("Error messages will be generated when values supplied to the ml_cov_search are absent in the data.frame", {
   
-  testthat::expect_error(MLCovSearch(data, #NONMEM output
-    list_pop_param = c("clearance"),
+  testthat::expect_error(ml_cov_search(data, #NONMEM output
+    pop_param = c("clearance"),
     cov_continuous = c("weight"),
     cov_factors = c("dIaB")))
 })
 
-testthat::test_that("MLCovSearch result_ML is a data.frame with only one covariate selection", {
+testthat::test_that("ml_cov_search result_ML is a data.frame with only one covariate selection", {
   
   testthat::expect_true(is.data.frame(result$result_ML))
   
@@ -41,13 +41,13 @@ testthat::test_that("MLCovSearch result_ML is a data.frame with only one covaria
   testthat::expect_true(sum(!is.na(result$result_ML$cov_selected)) == 1)
 })
 
-testthat::test_that("MLCovSearch result_5folds is a data.frame with 5 non-NA covariates selected", {
+testthat::test_that("ml_cov_search result_5folds is a data.frame with 5 non-NA covariates selected", {
   
   testthat::expect_true(is.data.frame(result$result_5folds))
   testthat::expect_true(sum(!is.na(result$result_5folds[1,])) == 5)
 })
 
-testthat::test_that("MLCovSearch returns an object of class `mlcov_data` with 5 components", {
+testthat::test_that("ml_cov_search returns an object of class `mlcov_data` with 5 components", {
   
   testthat::expect_true(inherits(result, "mlcov_data"))
   # testthat::expect_true((length(result) == 5))
