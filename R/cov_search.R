@@ -24,12 +24,12 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   
   # Select columns and generate data for XGBoost
   data <- col_select(data, pop_param, cov_continuous, cov_factors)
-  pop_param <- data %>% dplyr::select(dplyr::all_of(pop_param))
+  pop_parameters <- data %>% dplyr::select(dplyr::all_of(pop_param))
   factors <- data %>% dplyr::select(dplyr::all_of(cov_factors))
   continuous <- data %>% dplyr::select(dplyr::all_of(cov_continuous))
 
   # One-hot encoding of categorical covariates for covariates with more than 2 levels
-  dat_XGB <- generate_dat_XGB(pop_param, factors, continuous)
+  dat_XGB <- generate_dat_XGB(pop_parameters, factors, continuous)
  
   full_covariate_xgm <- names(dat_XGB)
   full_covariate_xgm <- setdiff(full_covariate_xgm, pop_param)
