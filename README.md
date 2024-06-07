@@ -12,7 +12,7 @@ devtools::install_github("certara/mlcov")
 ```
 library(mlcov)
 data_file <- system.file(package = "mlcov", "supplementary", "tab2")
-result <- MLCovSearch(tab = read.table(data_file,skip=1,header=T), #NONMEM output
+result <- MLCovSearch(tab = read.table(data_file, skip = 1, header = TRUE), #NONMEM output
                       list_pop_param = c("V1","CL"),
                       cov_continuous = c("AGE","WT","HT","BMI","ALB","CRT",
                                          "FER","CHOL","WBC","LYPCT","RBC",
@@ -42,11 +42,11 @@ Generate residual plots:
 Cl
 
 ```
-generate_residualsplots(data = read.table(data_file,skip=1,header=T), result, i = c('CL'))
+generate_residualsplots(data = read.table(data_file, skip = 1, header = TRUE), result, i = c('CL'))
 ```
 
 V1
 
 ```
-generate_residualsplots(data = read.table(data_file,skip=1,header=T), result, i = c('V1'))
+generate_residualsplots(data = read.table(data_file, skip = 1, header = TRUE), result, i = c('V1'))
 ```

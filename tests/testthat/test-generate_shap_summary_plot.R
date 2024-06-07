@@ -15,7 +15,7 @@ get_os <- function(){
 }
 
 # Read in tab2 dataset
-data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = T)
+data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = TRUE)
 
 # Search and select covariates. This function can take a few minutes to run
 result <- suppressWarnings(MLCovSearch(data, #NONMEM output

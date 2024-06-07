@@ -67,7 +67,7 @@ generate_residualsplots <- function(data, result, i, seed = NULL) {
     dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.numeric))
   
   # First case: covariates are selected after the vote
-  if (is.na(result_ML[i, 1]) == F)  {
+  if (is.na(result_ML[i, 1]) == FALSE)  {
     list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
     x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
     
