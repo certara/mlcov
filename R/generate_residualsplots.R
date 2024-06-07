@@ -9,19 +9,23 @@
 #' @param i An integer indicating the index of the parameter of interest.
 #' @param seed Numeric value for usage of \code{set.seed()} inside function.
 #'
-#' @return A list of ggplot objects, each representing a residual plot for a different covariate. The function returns an empty list if no significant relationships are found. It also handles cases where covariates are not selected after the vote.
+#' @return A list of ggplot objects of length 1 or greater, each representing a residual plot for a different covariate. The function returns an empty list if no significant relationships are found. It also handles cases where covariates are not selected after the vote.
 #'
 #' @examples
 #' # Assuming 'data' is a data frame with the necessary columns
 #' \dontrun{
-#' plots <- generate_residualsplots(data, 
+#' plots <- generate_residuals_plot(data, 
 #' result, 
 #' i = "V1",
 #' seed = 123)
 #' }
+#' 
+#' @import ggpmisc
+#' @import ggstatsplot
+#' 
 #' @export
 #' 
-generate_residualsplots <- function(data, result, i, seed = NULL) {
+generate_residuals_plot <- function(data, result, i, seed = NULL) {
   
   stopifnot(inherits(result, "mlcov_data"))
   
