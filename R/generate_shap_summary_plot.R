@@ -37,7 +37,7 @@ generate_shap_summary_plot <- function(data,
   # Initialize an empty list to store the SHAP summary plots
   shap_plots <- list()
   
-  for (i in data$list_pop_param) {
+  for (i in data$pop_param) {
     if (!is.null(data$shap_data[[i]])) {
       # Set to the seed used when making the data
       set.seed(data$shap_seed[[i]])

@@ -1,19 +1,19 @@
 `%>%` <- dplyr::`%>%`
 
 # Select columns to generate data for XGBoost
-col_select <- function(tab, list_pop_param, cov_continuous, cov_factors) {
+col_select <- function(data, pop_param, cov_continuous, cov_factors) {
   
   # Selection of columns required
-  tab <- tab %>%
+  data <- data %>%
     dplyr::select(
       ID,
-      dplyr::all_of(list_pop_param),
+      dplyr::all_of(pop_param),
       dplyr::all_of(cov_continuous),
       dplyr::all_of(cov_factors)
     )
   
   # In order to have the individual parameter and one point per subject
-  dat <- unique(tab) %>%
+  dat <- unique(data) %>%
     dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.factor))
   
   return(dat)
@@ -22,14 +22,14 @@ col_select <- function(tab, list_pop_param, cov_continuous, cov_factors) {
 
 
 # Check that covariates supplied by user exist in the data
-data_validation <- function(tab, list_pop_param, cov_continuous, cov_factors) {
+data_validation <- function(data, pop_param, cov_continuous, cov_factors) {
   errors <- c()
   
   for (i in 1:3) {
-    vectors <- list(list_pop_param, cov_continuous, cov_factors)
-    vector_names <- c("list_pop_param", "cov_continuous", "cov_factors")
+    vectors <- list(pop_param, cov_continuous, cov_factors)
+    vector_names <- c("pop_param", "cov_continuous", "cov_factors")
     
-    missing_values <- setdiff(vectors[[i]], colnames(tab))
+    missing_values <- setdiff(vectors[[i]], colnames(data))
     
     if (length(missing_values) > 0) {
       error_message <-
