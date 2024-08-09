@@ -4,7 +4,11 @@ R package for selection of covariate effects using ML
 ## Installation
 
 ```
-devtools::install_github("certara/mlcov")
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+remotes::install_github("certara/mlcov")
 ```
 
 # Usage
