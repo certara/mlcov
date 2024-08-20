@@ -10,6 +10,7 @@
 ^doc$
 ^Meta$
 ^LICENSE\.md$
+^LICENSE$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
