@@ -8,7 +8,11 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 # mlcov
 
-R package for selection of covariate effects using ML. Visit the [PAGE Abstract](https://www.page-meeting.org/?abstract=10996) to learn more.
+R package for selection of covariate effects using ML.
+
+The methodology implemented in the `mlcov` R package consists of four key steps. First, the dataset, comprised of empirical Bayesian estimates of individual parameters (EBEs) and covariate sets, is randomly split into five folds (step 1, data splitting). Second, the covariate selection (step 2) is performed by applying the Lasso algorithm to reduce irrelevant or redundant covariates due to correlation followed by the Boruta algorithm to iteratively identify relevant covariates based on their importance scores. Third, a voting mechanism (step 3) across folds determines the final selected covariates based on their robustness. Note that these first three steps are implemented by a simple call to a mlcov function (MLCovSearch). Finally, residual plots (step 4) are employed to evaluate the covariate-parameter relationships. Following the covariate selection using the proposed ML method, an XGboost model is trained on the selected covariates and the remaining trends between residuals (difference between the actual target values and the model's predicted values) and unselected covariates are examined. The primary goal is to ensure that the ML method did not overlook any significant trends or relationships that could be captured by additional covariates. This step is implemented in a separate function (generate_residualplots).
+
+Visit the [PAGE Abstract](https://www.page-meeting.org/?abstract=10996) to learn more.
 
 ## Installation
 
