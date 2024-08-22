@@ -1,14 +1,47 @@
 `%>%` <- dplyr::`%>%`
 
-#' ml_cov_search
+#' Covariate Selection for Population Parameters using Machine Learning
 #'
-#' @param data A data frame containing the data to be analyzed
-#' @param pop_param Character vector of population parameter names
-#' @param cov_continuous Character vector of continuous covariate names
-#' @param cov_factors Character vector of categorical or occasion covariate names
-#' @param seed Numeric value for usage of \code{set.seed()} inside function.
+#' The `ml_cov_search` function implements a machine learning-based methodology for covariate selection in population modeling. This function is part of a broader workflow that includes data splitting, covariate selection using Lasso and Boruta algorithms, and a voting mechanism to ensure robust covariate selection.
 #'
-#' @return list
+#' The methodology consists of the following steps:
+#' 
+#' 1. **Data Splitting:** The dataset, comprising empirical Bayesian estimates of individual parameters (EBEs) and covariates, is randomly split into five folds.
+#' 
+#' 2. **Covariate Selection:** 
+#'    - **Lasso Algorithm:** Applied to reduce irrelevant or redundant covariates that may be correlated.
+#'    - **Boruta Algorithm:** Iteratively identifies relevant covariates based on their importance scores, further refining the selection.
+#' 
+#' 3. **Voting Mechanism:** The final set of covariates is determined through a voting process across the five folds. Covariates that consistently appear as significant across the folds are selected for further analysis.
+#'
+#' The selected covariates are then used to train an XGBoost model, and the function generates SHAP (SHapley Additive exPlanations) summary plots for model interpretation. The primary goal is to identify robust covariates that influence the population parameters while ensuring that no significant trends are overlooked.
+#'
+#' @param data A data frame containing the input variables, including both the population parameters and covariates.
+#' @param pop_param Character vector of population parameter names. These parameters are the target variables for which covariate effects will be analyzed.
+#' @param cov_continuous Character vector of continuous covariate names. These covariates are treated as numeric variables in the analysis.
+#' @param cov_factors Character vector of categorical or occasion covariate names. These covariates are treated as factors and may be one-hot encoded if they have more than two levels.
+#' @param seed Numeric value for setting the random seed using \code{set.seed()} within the function, ensuring reproducibility. Defaults to 123.
+#'
+#' @return A list of class \code{mlcov_data} containing the following components:
+#' \item{result_ML}{A data frame with the selected covariates for each population parameter, along with the RMSE of the model using the selected covariates and the reference RMSE (baseline model).}
+#' \item{result_5folds}{A data frame containing the selected covariates from each of the 5 cross-validation folds.}
+#' \item{pop_param}{The population parameter names provided as input.}
+#' \item{cov_continuous}{The continuous covariates provided as input.}
+#' \item{cov_factors}{The categorical covariates provided as input.}
+#' \item{shap_data}{A list of SHAP values and long-format data for each population parameter, used for model interpretation and visualization.}
+#' \item{shap_seed}{A list of random seeds used for generating SHAP plots, ensuring reproducibility.}
+#'
+#' @examples
+#' # Example usage:
+#' \dontrun{
+#' result <- ml_cov_search(
+#'   data = my_data, 
+#'   pop_param = c("CL", "V"),
+#'   cov_continuous = c("AGE", "WT"),
+#'   cov_factors = c("SEX", "OCC")
+#' )
+#' }
+#'
 #' @export
 #'
 ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 123) {
@@ -47,8 +80,12 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   )
   rownames(result_5folds) <- pop_param
 
+  pb <- progress::progress_bar$new(
+    format = "[:bar] :percent :elapsed elapsed / :eta remaining", total = length(pop_param) * 6, clear = FALSE, show_after = 0)
   for (i in pop_param) {
-
+    pb$message(paste0("Searching covariate effects on ", i))
+    pb$tick()
+    
     y_xgb <- log(dat_XGB[, i])
 
     # Cross-validation
@@ -57,6 +94,7 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
     folds <- caret::createFolds(seq(1, nrow(x_xgb)), k = 5, list = TRUE, returnTrain = FALSE)
 
     for (j in 1:5) {
+      pb$tick()
       train.ind <- folds[[j]]
       testing <- x[train.ind, ] # Fold k for testing
       training <- x[-train.ind, ] # Remaining (k-1) for training
@@ -88,7 +126,6 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
           y = y_xgb_train,
           maxRuns = 200,
           doTrace = 0,
-          seed = 42,
           getImp = Boruta::getImpXgboost,
           nrounds = 200,
           objective = "reg:squarederror"

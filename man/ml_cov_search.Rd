@@ -2,24 +2,56 @@
 % Please edit documentation in R/ml_cov_search.R
 \name{ml_cov_search}
 \alias{ml_cov_search}
-\title{ml_cov_search}
+\title{Covariate Selection for Population Parameters using Machine Learning}
 \usage{
 ml_cov_search(data, pop_param, cov_continuous, cov_factors, seed = 123)
 }
 \arguments{
-\item{data}{A data frame containing the data to be analyzed}
+\item{data}{A data frame containing the input variables, including both the population parameters and covariates.}
 
-\item{pop_param}{Character vector of population parameter names}
+\item{pop_param}{Character vector of population parameter names. These parameters are the target variables for which covariate effects will be analyzed.}
 
-\item{cov_continuous}{Character vector of continuous covariate names}
+\item{cov_continuous}{Character vector of continuous covariate names. These covariates are treated as numeric variables in the analysis.}
 
-\item{cov_factors}{Character vector of categorical or occasion covariate names}
+\item{cov_factors}{Character vector of categorical or occasion covariate names. These covariates are treated as factors and may be one-hot encoded if they have more than two levels.}
 
-\item{seed}{Numeric value for usage of \code{set.seed()} inside function.}
+\item{seed}{Numeric value for setting the random seed using \code{set.seed()} within the function, ensuring reproducibility. Defaults to 123.}
 }
 \value{
-list
+A list of class \code{mlcov_data} containing the following components:
+\item{result_ML}{A data frame with the selected covariates for each population parameter, along with the RMSE of the model using the selected covariates and the reference RMSE (baseline model).}
+\item{result_5folds}{A data frame containing the selected covariates from each of the 5 cross-validation folds.}
+\item{pop_param}{The population parameter names provided as input.}
+\item{cov_continuous}{The continuous covariates provided as input.}
+\item{cov_factors}{The categorical covariates provided as input.}
+\item{shap_data}{A list of SHAP values and long-format data for each population parameter, used for model interpretation and visualization.}
+\item{shap_seed}{A list of random seeds used for generating SHAP plots, ensuring reproducibility.}
 }
 \description{
-ml_cov_search
+The `ml_cov_search` function implements a machine learning-based methodology for covariate selection in population modeling. This function is part of a broader workflow that includes data splitting, covariate selection using Lasso and Boruta algorithms, and a voting mechanism to ensure robust covariate selection.
+}
+\details{
+The methodology consists of the following steps:
+
+1. **Data Splitting:** The dataset, comprising empirical Bayesian estimates of individual parameters (EBEs) and covariates, is randomly split into five folds.
+
+2. **Covariate Selection:** 
+   - **Lasso Algorithm:** Applied to reduce irrelevant or redundant covariates that may be correlated.
+   - **Boruta Algorithm:** Iteratively identifies relevant covariates based on their importance scores, further refining the selection.
+
+3. **Voting Mechanism:** The final set of covariates is determined through a voting process across the five folds. Covariates that consistently appear as significant across the folds are selected for further analysis.
+
+The selected covariates are then used to train an XGBoost model, and the function generates SHAP (SHapley Additive exPlanations) summary plots for model interpretation. The primary goal is to identify robust covariates that influence the population parameters while ensuring that no significant trends are overlooked.
+}
+\examples{
+# Example usage:
+\dontrun{
+result <- ml_cov_search(
+  data = my_data, 
+  pop_param = c("CL", "V"),
+  cov_continuous = c("AGE", "WT"),
+  cov_factors = c("SEX", "OCC")
+)
+}
+
 }
