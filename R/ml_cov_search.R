@@ -47,8 +47,12 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   )
   rownames(result_5folds) <- pop_param
 
+  pb <- progress::progress_bar$new(
+    format = "[:bar] :percent :elapsed elapsed / :eta remaining", total = length(pop_param) * 6, clear = FALSE, show_after = 0)
   for (i in pop_param) {
-
+    pb$message(paste0("Searching covariate effects on ", i))
+    pb$tick()
+    
     y_xgb <- log(dat_XGB[, i])
 
     # Cross-validation
@@ -57,6 +61,7 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
     folds <- caret::createFolds(seq(1, nrow(x_xgb)), k = 5, list = TRUE, returnTrain = FALSE)
 
     for (j in 1:5) {
+      pb$tick()
       train.ind <- folds[[j]]
       testing <- x[train.ind, ] # Fold k for testing
       training <- x[-train.ind, ] # Remaining (k-1) for training
@@ -88,7 +93,6 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
           y = y_xgb_train,
           maxRuns = 200,
           doTrace = 0,
-          seed = 42,
           getImp = Boruta::getImpXgboost,
           nrounds = 200,
           objective = "reg:squarederror"

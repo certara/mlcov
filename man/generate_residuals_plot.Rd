@@ -4,7 +4,7 @@
 \alias{generate_residuals_plot}
 \title{Generate Residual Plots for Model Analysis}
 \usage{
-generate_residuals_plot(data, result, pop_param, seed = NULL)
+generate_residuals_plot(data, result, pop_param, seed = 123)
 }
 \arguments{
 \item{data}{Data frame containing the input variables.}
@@ -26,8 +26,7 @@ This function generates residual plots for model analysis based on various covar
 \dontrun{
 plots <- generate_residuals_plot(data, 
 result, 
-pop_param = "V1",
-seed = 123)
+pop_param = "V1")
 }
 
 }

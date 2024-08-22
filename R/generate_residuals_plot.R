@@ -15,8 +15,7 @@
 #' \dontrun{
 #' plots <- generate_residuals_plot(data, 
 #' result, 
-#' pop_param = "V1",
-#' seed = 123)
+#' pop_param = "V1")
 #' }
 #' 
 #' @import ggpmisc
@@ -24,7 +23,7 @@
 #' 
 #' @export
 #' 
-generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
+generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
   
   stopifnot(inherits(result, "mlcov_data"))
   
@@ -93,10 +92,20 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
       
       residuals <- y.xgb.pred - y.xgm_test
       
+      pb <- progress::progress_bar$new(
+        format = "[:bar] :percent :elapsed elapsed / :eta remaining",
+        total = length(full_covariate) - length(list_cov[[1]]), # total covariates minus those identified from ml_cov_search
+        clear = FALSE,
+        show_after = 0
+      )
+      
+        
       for (k in full_covariate) {
         p_value_count <- c()
         plots_listK <- list() 
         if (!(any(grepl(k, list_cov[[1]])))) {
+          pb$message(paste0("Testing pvalue significance for ", k))
+
           if (k %in% cov_continuous) {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
             plot <- ggplot2::ggplot(data_plot, aes(x = `cov`, y = `Residuals`))+
@@ -112,14 +121,20 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
             
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-            plot <- ggstatsplot::ggbetweenstats(data = data_plot,
-                                                x    = `cov`,
-                                                y    = `Residuals` ,
-                                                type = "nonparametric",     # nonparametric   parametric    robust   bayes
-                                                xlab = k,
-                                                ylab = paste("Residuals", pop_param)) + 
-              ggplot2::theme_bw() + 
-              ggplot2::theme(legend.position="none")
+            plot <-
+              suppressMessages(
+                ggstatsplot::ggbetweenstats(
+                  data = data_plot,
+                  x    = `cov`,
+                  y    = `Residuals` ,
+                  type = "nonparametric",
+                  # nonparametric   parametric    robust   bayes
+                  xlab = k,
+                  ylab = paste("Residuals", pop_param)
+                ) +
+                  ggplot2::theme_bw() +
+                  ggplot2::theme(legend.position = "none")
+              )
             
             p_value <- plot$plot_env$subtitle_df$p.value
           }
@@ -169,7 +184,9 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
               
             } else {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-              plot2 <- ggstatsplot::ggbetweenstats(data = data_plot,
+
+              plot2 <- suppressMessages(
+                ggstatsplot::ggbetweenstats(data = data_plot,
                                                   x     = `cov`,
                                                   y     = `Residuals` ,
                                                   type  = "nonparametric",     # nonparametric   parametric    robust   bayes
@@ -177,11 +194,12 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
                                                   ylab  = paste("Residuals", pop_param)) + 
                 ggplot2::theme_bw() + 
                 ggplot2::theme(legend.position="none")
+              )
               
               p_value2 <- plot2$plot_env$subtitle_df$p.value
             }
 
-
+            
             p_value_count <- c(p_value_count,p_value2)
             plots_listK[[attempts]] <- plot2
             
@@ -189,6 +207,7 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
             
           }
           
+          pb$message(paste0("pvalues: ", paste0(round(p_value_count, digits = 2), collapse = ",")))
           
           #if 6 of the 10 pvalues are significant, we draw the residuals plots
           if (sum( p_value_count[!is.na(p_value_count)] <= 0.05) >= 6){
@@ -199,7 +218,11 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
   
             
             plots_list[[k]] <- plot
+            pb$message("TRUE")
+          } else {
+            pb$message("FALSE")
           }
+          pb$tick()
         }
       }
     }
@@ -252,7 +275,8 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
             
           } else {
             data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-            plot <- ggstatsplot::ggbetweenstats(data = data_plot,
+            plot <- suppressMessages(
+              ggstatsplot::ggbetweenstats(data = data_plot,
                                                 x    = `cov`,
                                                 y    = `Residuals`,
                                                 type = "nonparametric",     # nonparametric   parametric    robust   bayes
@@ -260,6 +284,7 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
                                                 ylab = paste("Residuals", pop_param)) + 
               ggplot2::theme_bw() + 
               ggplot2::theme(legend.position="none")
+            )
             
             p_value <- plot$plot_env$subtitle_df$p.value
           }
@@ -308,14 +333,20 @@ generate_residuals_plot <- function(data, result, pop_param, seed = NULL) {
               
             } else {
               data_plot <- data.frame(Residuals = residuals, cov = c(dat[-train.ind, k]))
-              plot2 <- ggstatsplot::ggbetweenstats(data = data_plot,
-                                                   x    = `cov`,
-                                                   y    = `Residuals` ,
-                                                   type = "nonparametric",     # nonparametric   parametric    robust   bayes
-                                                   xlab = k,
-                                                   ylab = paste("Residuals", pop_param)) + 
-                ggplot2::theme_bw() + 
-                ggplot2::theme(legend.position="none")
+              plot2 <-
+                suppressMessages(
+                  ggstatsplot::ggbetweenstats(
+                    data = data_plot,
+                    x    = `cov`,
+                    y    = `Residuals` ,
+                    type = "nonparametric",
+                    # nonparametric   parametric    robust   bayes
+                    xlab = k,
+                    ylab = paste("Residuals", pop_param)
+                  ) +
+                    ggplot2::theme_bw() +
+                    ggplot2::theme(legend.position = "none")
+                )
               
               p_value2 <- plot2$plot_env$subtitle_df$p.value
             }
