@@ -40,7 +40,7 @@ Import data file:
 ```{r, message=FALSE}
 library(mlcov)
 
-data_file <- system.file(package = "mlcov", "supplementary", "tab11")
+data_file <- system.file(package = "mlcov", "supplementary", "tab33")
 data <- read.table(data_file, skip = 1, header = TRUE)
 ```
 

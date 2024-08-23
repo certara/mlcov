@@ -1,7 +1,7 @@
 Package: mlcov
 Type: Package
 Title: Machine learning application for covariate selection
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: c(
       person("Ayman", "Akil", email = "ayman.akil@certara.com",
         role = c("aut")),

@@ -218,8 +218,6 @@ generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
             
           }
           
-          pb$message(paste0("pvalues: ", paste0(round(p_value_count, digits = 2), collapse = ",")))
-          
           #if 6 of the 10 pvalues are significant, we draw the residuals plots
           if (sum( p_value_count[!is.na(p_value_count)] <= 0.05) >= 6){
             position_first_below_0.05 <- which.max(p_value_count <=   0.05)
@@ -229,10 +227,7 @@ generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
   
             
             plots_list[[k]] <- plot
-            pb$message("TRUE")
-          } else {
-            pb$message("FALSE")
-          }
+          } 
           pb$tick()
         }
       }

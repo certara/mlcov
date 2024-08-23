@@ -15,7 +15,7 @@ get_os <- function(){
 }
 
 # Read in tab2 dataset
-data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = TRUE)
+data <- read.table(system.file(package = "mlcov", "supplementary", "tab33"), skip = 1, header = TRUE)
 
 # Search and select covariates. This function can take a few minutes to run
 result <- suppressWarnings(ml_cov_search(data, #NONMEM output
@@ -38,13 +38,13 @@ testthat::test_that("ml_cov_search result_ML is a data.frame with only one covar
   testthat::expect_true(is.data.frame(result$result_ML))
   
   # Currently the function returns a row of NA in the demo. This count excludes that
-  testthat::expect_true(sum(!is.na(result$result_ML$cov_selected)) == 1)
+  testthat::expect_true(sum(!is.na(result$result_ML$cov_selected)) == 2)
 })
 
 testthat::test_that("ml_cov_search result_5folds is a data.frame with 5 non-NA covariates selected", {
   
   testthat::expect_true(is.data.frame(result$result_5folds))
-  testthat::expect_true(sum(!is.na(result$result_5folds[1,])) == 5)
+  testthat::expect_true(sum(!is.na(result$result_5folds[1,])) == 4)
 })
 
 testthat::test_that("ml_cov_search returns an object of class `mlcov_data` with 5 components", {
