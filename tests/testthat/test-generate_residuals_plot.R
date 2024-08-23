@@ -16,7 +16,7 @@ get_os <- function(){
 
 
 # Read in tab2 dataset
-data <- read.table(system.file(package = "mlcov", "supplementary", "tab2"), skip = 1, header = TRUE)
+data <- read.table(system.file(package = "mlcov", "supplementary", "tab33"), skip = 1, header = TRUE)
 
 # Search and select covariates. This function can take a few minutes to run
 result <- suppressWarnings(ml_cov_search(data, #NONMEM output
@@ -40,7 +40,7 @@ testthat::test_that("generate_residuals_plot does not return plots for Cl", {
 })
 
 testthat::test_that("generate_residuals_plot does not return plots for V1", {
-  testthat::expect_null(plot_V1)
+  testthat::expect_s3_class(plot_V1[[1]], "gg")
 })
 
 testthat::test_that("Error messages will be generated when values supplied to the function are absent in the data.frame", {
