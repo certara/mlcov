@@ -147,10 +147,10 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   rownames(result_ML) <- pop_param
 
   res <- t(result_5folds[,1:5])
-  res <- res %>% dplyr::na_if("")
+  res[res == ""] <- NA
 
   for (i in pop_param) {
-    list_cov <- strsplit(res[, i], ",")
+    list_cov <- strsplit(as.character(res[, i]), ",")
     list_cov_nb <- trimws(unlist(list_cov))
     comptage <- as.data.frame(table(list_cov_nb))
     if (nrow(comptage) != 0) {
