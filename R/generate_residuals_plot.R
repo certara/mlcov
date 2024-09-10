@@ -236,7 +236,7 @@ generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
   
   # Second case: covariates are not selected after the vote
   if (is.na(result_ML[pop_param, 1]))  {
-    list_cov <- strsplit(res[, pop_param], ",")
+    list_cov <- strsplit(as.character(res[, pop_param]), ",")
     list_cov_nb <- trimws(unlist(list_cov))
     comptage <- as.data.frame(table(list_cov_nb))
     if (nrow(comptage) != 0) {
