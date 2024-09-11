@@ -50,8 +50,8 @@ generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
   result_5folds <- result$result_5folds
   
   # Check that covariates supplied by user exist in the data
-  data_validation(data, pop_params, cov_continuous, cov_factors)
-  
+  data_validation(data, pop_param, cov_continuous, cov_factors)
+
   # Select columns and generate data for XGBoost
   dat <- col_select(data, pop_params, cov_continuous, cov_factors)
   pop_params <- dat %>% dplyr::select(dplyr::all_of(pop_params))
