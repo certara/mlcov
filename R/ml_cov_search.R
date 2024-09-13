@@ -46,6 +46,19 @@
 #'
 ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 123) {
   
+  if (missing(cov_continuous) &&
+      missing(cov_factors)) {
+    stop(
+      "No covariates specified. Use `cov_continuous` and/or `cov_factors` argument to specify covariates to include in `ml_cov_search()`."
+    )
+  }
+  if (missing(cov_continuous)) {
+    cov_continuous <- NULL
+  }
+  if (missing(cov_factors)) {
+    cov_factors <- NULL
+  }
+  
   # Check that covariates supplied by user exist in the data
   data_validation(data, pop_param, cov_continuous, cov_factors)
 
