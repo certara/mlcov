@@ -156,7 +156,7 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   }
 
   # Final covariate selection with a voting mechanism
-  result_ML <- data.frame(cov_selected = rep(NA, length(pop_param)))
+  result_ML <- data.frame(cov_selected = rep("", length(pop_param)))
   rownames(result_ML) <- pop_param
 
   res <- t(result_5folds[,1:5])
@@ -188,7 +188,7 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
     RMSE <- rep(NA,5)
     RMSE_ref <- rep(NA,5)
 
-    if (is.na(result_ML[i, 1]) == FALSE){
+    if (result_ML[i, 1] != ""){
       list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
       x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
       folds <- caret::createFolds(seq(1,nrow(x.selected_final)), k = 5, list = TRUE, returnTrain = FALSE)
@@ -238,7 +238,7 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   for (i in pop_param) {
     y_xgb <- log(dat_XGB[, i])
     
-    if (is.na(result_ML[i, 1]) == FALSE) {
+    if (result_ML[i, 1] != "") {
       list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
       x.selected_final <-
         as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
