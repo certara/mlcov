@@ -96,6 +96,7 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   pb <- progress::progress_bar$new(
     format = "[:bar] :percent :elapsed elapsed / :eta remaining", total = length(pop_param) * 6, clear = FALSE, show_after = 0)
   for (i in pop_param) {
+    set.seed(seed)
     pb$message(paste0("Searching covariate effects on ", i))
     pb$tick()
     
