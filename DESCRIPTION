@@ -3,13 +3,15 @@ Type: Package
 Title: Machine learning application for covariate selection
 Version: 0.0.2
 Authors@R: c(
-      person("Ayman", "Akil", email = "ayman.akil@certara.com",
-        role = c("aut")),
       person("Ibtissem", "Rebai", email = "Ibtissem.Rebai@certara.com",
         role = c("aut")),
+      person("Floris", "Fauchet", email = "Floris.Fauchet@certara.com",
+      role = c("aut")),
+      person("Anna", "Largajolli", email = "Anna.Largajolli@certara.com",
+      role = c("aut")),
       person("Vincent", "Duval", email = "Vincent.Duval@certara.com",
         role = c("aut")),
-      person("Anna", "Largajolli", email = "Anna.Largajolli@certara.com",
+      person("Ayman", "Akil", email = "ayman.akil@certara.com",
       role = c("aut")),
       person("James", "Craig", email = "james.craig@certara.com",
       role = c("aut", "cre")),
