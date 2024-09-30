@@ -62,9 +62,8 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   # Check that covariates supplied by user exist in the data
   data_validation(data, pop_param, cov_continuous, cov_factors)
 
-  # Set seed
+  # Check if seed is numeric. 
   stopifnot(is.numeric(seed))
-  set.seed(seed)
 
   stopifnot(requireNamespace("caret", quietly = TRUE))
   
@@ -96,9 +95,8 @@ ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 1
   pb <- progress::progress_bar$new(
     format = "[:bar] :percent :elapsed elapsed / :eta remaining", total = length(pop_param) * 6, clear = FALSE, show_after = 0)
   for (i in pop_param) {
+    # Use same seed for each iteration of loop
     set.seed(seed)
-    my_seed_name <- paste0("seed_", i)
-    assign(my_seed_name, .Random.seed, envir = .GlobalEnv)
     
     pb$message(paste0("Searching covariate effects on ", i))
     pb$tick()
