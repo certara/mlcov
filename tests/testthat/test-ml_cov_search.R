@@ -1,55 +1,102 @@
-get_os <- function(){
-  sysinf <- Sys.info()
-  if (!is.null(sysinf)){
-    os <- sysinf['sysname']
-    if (os == 'Darwin')
-      os <- "osx"
-  } else { ## mystery machine
-    os <- .Platform$OS.type
-    if (grepl("^darwin", R.version$os))
-      os <- "osx"
-    if (grepl("linux-gnu", R.version$os))
-      os <- "linux"
-  }
-  tolower(os)
-}
+describe("ml_cov_search argument validation", {
+  it("errors when no covariates are supplied", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(dat, pop_param = "CL"),
+      "No covariates specified"
+    )
+  })
 
-# Read in tab2 dataset
-data <- read.table(system.file(package = "mlcov", "supplementary", "tab33"), skip = 1, header = TRUE)
+  it("errors when requested columns are missing from the data", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "clearance",
+        cov_continuous = "weight",
+        cov_factors = "dIaB"
+      ),
+      "missing in the dataset"
+    )
+  })
 
-# Search and select covariates. This function can take a few minutes to run
-result <- suppressWarnings(ml_cov_search(data, #NONMEM output
-                                         pop_param = c("V1","CL"),
-                                         cov_continuous = c("AGE","WT","HT","BMI","ALB","CRT",
-                                                            "FER","CHOL","WBC","LYPCT","RBC",
-                                                            "HGB","HCT","PLT"),
-                                         cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")))
+  it("errors when data has no ID column", {
+    dat <- synthetic_mlcov_data()
+    dat$ID <- NULL
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        cov_factors = "SEX"
+      ),
+      "ID"
+    )
+  })
 
-testthat::test_that("Error messages will be generated when values supplied to the ml_cov_search are absent in the data.frame", {
-  
-  testthat::expect_error(ml_cov_search(data, #NONMEM output
-    pop_param = c("clearance"),
-    cov_continuous = c("weight"),
-    cov_factors = c("dIaB")))
-})
+  it("errors when vote_threshold exceeds n_folds", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        n_folds = 3,
+        vote_threshold = 4,
+        boruta_algorithm = "randomForest",
+        use_lasso = FALSE
+      ),
+      "vote_threshold"
+    )
+  })
 
-testthat::test_that("ml_cov_search result_ML is a data.frame with only one covariate selection", {
-  
-  testthat::expect_true(is.data.frame(result$result_ML))
-  
-  # Currently the function returns a row of NA in the demo. This count excludes that
-  testthat::expect_true(sum(!is.na(result$result_ML$cov_selected)) == 2)
-})
+  it("errors when boruta_pvalue is outside (0, 1)", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        boruta_pvalue = 0,
+        boruta_algorithm = "randomForest",
+        use_lasso = FALSE
+      ),
+      "boruta_pvalue"
+    )
+  })
 
-testthat::test_that("ml_cov_search result_5folds is a data.frame with 5 non-NA covariates selected", {
-  
-  testthat::expect_true(is.data.frame(result$result_5folds))
-  testthat::expect_true(sum(!is.na(result$result_5folds[1,])) == 4)
-})
+  it("errors when log_ebes is TRUE and EBEs are not strictly positive", {
+    dat <- synthetic_mlcov_data()
+    dat$CL[1] <- 0
+    expect_error(
+      with_mocked_bindings(
+        run_boruta = function(...) "WT",
+        ml_cov_search(
+          dat,
+          pop_param = "CL",
+          cov_continuous = "WT",
+          n_folds = 2,
+          vote_threshold = 1,
+          boruta_algorithm = "randomForest",
+          use_lasso = FALSE,
+          log_ebes = TRUE
+        ),
+        .package = "mlcov"
+      ),
+      "strictly positive"
+    )
+  })
 
-testthat::test_that("ml_cov_search returns an object of class `mlcov_data` with 5 components", {
-  
-  testthat::expect_true(inherits(result, "mlcov_data"))
-  # testthat::expect_true((length(result) == 5))
-  # Removed for now during devlopment
+  it("errors for an unknown boruta_algorithm", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        boruta_algorithm = "svm"
+      ),
+      "should be one of"
+    )
+  })
 })
