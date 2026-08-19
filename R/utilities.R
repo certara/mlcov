@@ -26,6 +26,17 @@ col_select <- function(data, pop_param, cov_continuous, cov_factors) {
     dplyr::select(dplyr::all_of(cols)) %>%
     unique()
 
+  n_conflict <- sum(duplicated(dat$ID))
+  if (n_conflict > 0) {
+    n_id <- length(unique(dat$ID[duplicated(dat$ID)]))
+    stop(
+      "Analysis columns are not unique within ID for ", n_id,
+      " subject(s). Supply one row per subject; EBEs and covariates must be ",
+      "constant within ID so subjects are not split across folds.",
+      call. = FALSE
+    )
+  }
+
   if (length(cov_factors) > 0) {
     dat <- dat %>%
       dplyr::mutate(dplyr::across(dplyr::all_of(cov_factors), as.factor))
@@ -419,11 +430,56 @@ mlcov_settings <- function(result) {
   s
 }
 
+#' Map an encoded column name back to its original covariate
+#'
+#' Dummy names are `paste0(factor, level)`. When one factor name is a prefix
+#' of another (`RACE` vs `RACE_GROUP`), the longest matching factor is used.
+#'
+#' @param col Encoded or original column name.
+#' @param cov_continuous Original continuous names.
+#' @param cov_factors Original categorical names.
+#' @return Original covariate name, or `NA_character_` if unmatched.
+#' @keywords internal
+#' @noRd
+original_covariate_for_column <- function(col, cov_continuous, cov_factors) {
+  if (length(col) != 1L || is.na(col) || !nzchar(col)) {
+    return(NA_character_)
+  }
+  if (col %in% cov_continuous || col %in% cov_factors) {
+    return(col)
+  }
+  prefixes <- cov_factors[nzchar(cov_factors) & startsWith(col, cov_factors)]
+  if (length(prefixes) == 0L) {
+    return(NA_character_)
+  }
+  prefixes[which.max(nchar(prefixes))]
+}
+
+#' Original covariate names implied by a selection (dummies or originals)
+#'
+#' @keywords internal
+#' @noRd
+selected_original_names <- function(selected, cov_continuous, cov_factors) {
+  if (length(selected) == 0) {
+    return(character())
+  }
+  orig <- vapply(
+    selected,
+    original_covariate_for_column,
+    character(1),
+    cov_continuous = cov_continuous,
+    cov_factors = cov_factors,
+    USE.NAMES = FALSE
+  )
+  unique(orig[!is.na(orig)])
+}
+
 #' Map selected covariate names onto columns of an XGBoost-encoded frame
 #'
 #' Tree-based searches store original factor names; XGBoost searches store
-#' dummy column names. SHAP / residual plots always train XGBoost, so names
-#' are expanded onto the dummy-encoded frame.
+#' dummy column names. SHAP / residual plots always train XGBoost, so original
+#' factor names are expanded onto the dummy-encoded frame via exact original
+#' identity (longest-prefix match), not `startsWith()` on dummy names.
 #'
 #' @param selected Character vector of selected names.
 #' @param xgb_names Column names of the XGBoost-encoded predictor frame.
@@ -440,23 +496,20 @@ expand_to_xgb_columns <- function(selected, xgb_names, cov_continuous, cov_facto
     return(selected)
   }
 
-  out <- character()
-  for (s in selected) {
-    if (s %in% xgb_names) {
-      out <- c(out, s)
-      next
-    }
-    if (s %in% cov_continuous) {
-      next
-    }
-    if (s %in% cov_factors) {
-      others <- setdiff(c(cov_continuous, cov_factors), s)
-      hits <- xgb_names[xgb_names == s | startsWith(xgb_names, s)]
-      hits <- setdiff(hits, others)
-      out <- c(out, hits)
-    }
-  }
-  unique(out[out %in% xgb_names])
+  orig_of_xgb <- vapply(
+    xgb_names,
+    original_covariate_for_column,
+    character(1),
+    cov_continuous = cov_continuous,
+    cov_factors = cov_factors,
+    USE.NAMES = FALSE
+  )
+  selected_orig <- selected_original_names(
+    selected,
+    cov_continuous,
+    cov_factors
+  )
+  unique(xgb_names[orig_of_xgb %in% selected_orig | xgb_names %in% selected])
 }
 
 #' Prepare subject-level and XGBoost-encoded frames from a search result

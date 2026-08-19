@@ -34,6 +34,27 @@ describe("ml_cov_search argument validation", {
     )
   })
 
+  it("errors when analysis columns are not unique within ID", {
+    dat <- synthetic_mlcov_data(n = 8)
+    extra <- dat[1, , drop = FALSE]
+    extra$WT <- extra$WT + 5
+    dat <- rbind(dat, extra)
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        cov_factors = "SEX",
+        use_lasso = FALSE,
+        n_folds = 2,
+        vote_threshold = 1,
+        boruta_algorithm = "randomForest",
+        boruta_max_runs = 11
+      ),
+      "not unique within ID"
+    )
+  })
+
   it("errors when vote_threshold exceeds n_folds", {
     dat <- synthetic_mlcov_data()
     expect_error(

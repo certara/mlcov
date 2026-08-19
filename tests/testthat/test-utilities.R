@@ -78,6 +78,60 @@ describe("encoding and voting helpers", {
     expect_false("RACE" %in% expanded)
   })
 
+  it("does not expand RACE_GROUP dummies when RACE is selected", {
+    xgb_names <- c("RACEBlack", "RACEWhite", "RACE_GROUPA", "RACE_GROUPB", "WT")
+    expanded <- expand_to_xgb_columns(
+      selected = "RACE",
+      xgb_names = xgb_names,
+      cov_continuous = "WT",
+      cov_factors = c("RACE", "RACE_GROUP")
+    )
+    expect_true(all(c("RACEBlack", "RACEWhite") %in% expanded))
+    expect_false(any(expanded %in% c("RACE_GROUPA", "RACE_GROUPB")))
+  })
+
+  it("maps dummy names back to the original factor using the longest prefix", {
+    expect_equal(
+      original_covariate_for_column(
+        "RACE_GROUPA",
+        cov_continuous = "WT",
+        cov_factors = c("RACE", "RACE_GROUP")
+      ),
+      "RACE_GROUP"
+    )
+    expect_equal(
+      selected_original_names(
+        c("AGEGROUP", "WT"),
+        cov_continuous = c("WT", "AGE"),
+        cov_factors = "AGEGROUP"
+      ),
+      c("AGEGROUP", "WT")
+    )
+    expect_false(
+      "AGE" %in% selected_original_names(
+        "AGEGROUP",
+        cov_continuous = c("WT", "AGE"),
+        cov_factors = "AGEGROUP"
+      )
+    )
+  })
+
+  it("collapses identical repeated ID rows and errors when analysis columns conflict", {
+    dat <- synthetic_mlcov_data(n = 5)
+    repeated <- rbind(dat, dat)
+    out <- col_select(repeated, "CL", "WT", "SEX")
+    expect_equal(nrow(out), 5)
+    expect_equal(length(unique(out$ID)), 5)
+
+    conflict <- dat
+    conflict$WT[1] <- conflict$WT[1] + 10
+    conflict <- rbind(dat[1, , drop = FALSE], conflict[1, , drop = FALSE])
+    expect_error(
+      col_select(conflict, "CL", "WT", "SEX"),
+      "not unique within ID"
+    )
+  })
+
   it("maps Lasso dummy names back to original covariates for tree learners", {
     dat <- synthetic_mlcov_data(n = 40)
     training <- dat[, c("WT", "AGE", "SEX", "RACE")]

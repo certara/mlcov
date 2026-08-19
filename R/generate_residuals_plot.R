@@ -96,13 +96,12 @@ generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
 
   covs_to_test <- full_covariate
   if (skip_selected) {
-    covs_to_test <- full_covariate[
-      !vapply(
-        full_covariate,
-        function(k) any(grepl(k, selected_voted, fixed = TRUE)),
-        logical(1)
-      )
-    ]
+    selected_orig <- selected_original_names(
+      selected_voted,
+      cov_continuous,
+      cov_factors
+    )
+    covs_to_test <- setdiff(full_covariate, selected_orig)
   }
 
   if (length(covs_to_test) == 0) {

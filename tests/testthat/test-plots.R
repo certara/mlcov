@@ -20,6 +20,15 @@ describe("generate_shap_summary_plot", {
     expect_s3_class(plots$CL, "ggplot")
     expect_silent(ggplot2::ggplot_build(plots$CL))
   })
+
+  it("warns that kind = \"bar\" is ignored", {
+    dat <- synthetic_mlcov_data(n = 40)
+    result <- stub_mlcov_result()
+    expect_warning(
+      generate_shap_summary_plot(result, dat, kind = "bar"),
+      "kind"
+    )
+  })
 })
 
 describe("generate_residuals_plot", {

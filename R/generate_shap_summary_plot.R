@@ -19,7 +19,9 @@
 #' @param my_format Unused; retained for compatibility with earlier signatures.
 #' @param min_color_bound Low end of the feature-value colour scale.
 #' @param max_color_bound High end of the feature-value colour scale.
-#' @param kind Unused; retained for compatibility with earlier signatures.
+#' @param kind Retained for compatibility. Only the xgboost SHAP summary
+#'   (or a single-feature scatter) is produced. `"bar"` is accepted but
+#'   ignored with a warning.
 #' @param title A character string used as the plot title. If `NULL`, the
 #'   population parameter name is used.
 #' @param title.position Horizontal title alignment in `[0, 1]`.
@@ -57,6 +59,13 @@ generate_shap_summary_plot <- function(result,
     )
   }
   kind <- match.arg(kind)
+  if (identical(kind, "bar")) {
+    warning(
+      "`kind = \"bar\"` is no longer supported; SHAP plots use xgboost's ",
+      "summary scatter. The argument is ignored.",
+      call. = FALSE
+    )
+  }
   settings <- mlcov_settings(result)
   frames <- prepare_mlcov_frames(data, result)
   dat_xgb <- frames$dat_xgb

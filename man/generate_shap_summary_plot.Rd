@@ -38,7 +38,9 @@ contain `ID`, the population parameters, and the covariates).}
 
 \item{max_color_bound}{High end of the feature-value colour scale.}
 
-\item{kind}{Unused; retained for compatibility with earlier signatures.}
+\item{kind}{Retained for compatibility. Only the xgboost SHAP summary
+(or a single-feature scatter) is produced. `"bar"` is accepted but
+ignored with a warning.}
 
 \item{title}{A character string used as the plot title. If `NULL`, the
 population parameter name is used.}
