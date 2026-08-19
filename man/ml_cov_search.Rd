@@ -2,55 +2,104 @@
 % Please edit documentation in R/ml_cov_search.R
 \name{ml_cov_search}
 \alias{ml_cov_search}
-\title{Covariate Selection for Population Parameters using Machine Learning}
+\title{Machine-learning covariate search}
 \usage{
-ml_cov_search(data, pop_param, cov_continuous, cov_factors, seed = 123)
+ml_cov_search(
+  data,
+  pop_param,
+  cov_continuous,
+  cov_factors,
+  seed = 123,
+  use_lasso = TRUE,
+  lambda_lasso = c("lambda.min", "lambda.1se"),
+  boruta_algorithm = c("lightgbm", "randomForest", "xgboost", "catboost"),
+  boruta_pvalue = 0.01,
+  n_folds = 5L,
+  vote_threshold = 2L,
+  log_ebes = TRUE,
+  boruta_max_runs = 200L
+)
 }
 \arguments{
-\item{data}{A data frame containing the input variables, including both the population parameters and covariates.}
+\item{data}{A data frame containing EBEs, covariates, and an `ID` column
+(used to keep one row per subject).}
 
-\item{pop_param}{Character vector of population parameter names. These parameters are the target variables for which covariate effects will be analyzed.}
+\item{pop_param}{Character vector of population parameter (EBE) names.}
 
-\item{cov_continuous}{Character vector of continuous covariate names. These covariates are treated as numeric variables in the analysis.}
+\item{cov_continuous}{Character vector of continuous covariate names.
+Optional if `cov_factors` is supplied.}
 
-\item{cov_factors}{Character vector of categorical or occasion covariate names. These covariates are treated as factors and may be one-hot encoded if they have more than two levels.}
+\item{cov_factors}{Character vector of categorical covariate names.
+Optional if `cov_continuous` is supplied. Multi-level factors are
+dummy-encoded for XGBoost and Lasso; tree-based Boruta learners keep
+them as factors.}
 
-\item{seed}{Numeric value for setting the random seed using \code{set.seed()} within the function, ensuring reproducibility. Defaults to 123.}
+\item{seed}{Numeric seed passed to [set.seed()] at the start of each
+parameter search. Defaults to 123.}
+
+\item{use_lasso}{Logical. If `TRUE` (default), Lasso pre-filters covariates
+within each training fold before Boruta.}
+
+\item{lambda_lasso}{Lasso penalty chosen by [glmnet::cv.glmnet()]:
+`"lambda.min"` (default) or `"lambda.1se"`.}
+
+\item{boruta_algorithm}{Base learner used by Boruta. One of `"lightgbm"`
+(default), `"randomForest"`, `"xgboost"`, or `"catboost"`. CatBoost
+requires the optional `catboost` package.}
+
+\item{boruta_pvalue}{Significance level passed to [Boruta::Boruta()].
+Defaults to 0.01.}
+
+\item{n_folds}{Number of outer cross-validation folds (caret 80/20
+train/test splits). Defaults to 5. Inner Lasso CV uses at least 3 folds.}
+
+\item{vote_threshold}{Minimum number of folds in which a covariate must be
+confirmed to be retained (`Freq >= vote_threshold`). Defaults to 2.
+The v2 manuscript majority rule ("more than two out of five") corresponds
+to `vote_threshold = 3`.}
+
+\item{log_ebes}{Logical. If `TRUE` (default), EBEs are log-transformed
+before model fitting and must be strictly positive.}
+
+\item{boruta_max_runs}{Maximum Boruta iterations (`maxRuns`). Defaults to
+200. The v2 manuscript describes up to 100 iterations; pass
+`boruta_max_runs = 100` to match that setting.}
 }
 \value{
-A list of class \code{mlcov_data} containing the following components:
-\item{result_ML}{A data frame with the selected covariates for each population parameter, along with the RMSE of the model using the selected covariates and the reference RMSE (baseline model).}
-\item{result_5folds}{A data frame containing the selected covariates from each of the 5 cross-validation folds.}
-\item{pop_param}{The population parameter names provided as input.}
-\item{cov_continuous}{The continuous covariates provided as input.}
-\item{cov_factors}{The categorical covariates provided as input.}
-\item{shap_data}{A list of SHAP values and long-format data for each population parameter, used for model interpretation and visualization.}
-\item{shap_seed}{A list of random seeds used for generating SHAP plots, ensuring reproducibility.}
+An object of class `mlcov_data` with:
+\item{result_ML}{Data frame of voted covariates per parameter (`cov_selected`).}
+\item{result_5folds}{Per-fold confirmed covariates (name kept for compatibility
+  even when `n_folds` is not 5).}
+\item{result_folds}{Identical to `result_5folds`.}
+\item{pop_param, cov_continuous, cov_factors}{The names supplied by the caller.}
+\item{settings}{List of resolved arguments (`use_lasso`, `lambda_lasso`,
+  `boruta_algorithm`, `boruta_pvalue`, `n_folds`, `vote_threshold`,
+  `log_ebes`, `boruta_max_runs`, `seed`).}
 }
 \description{
-The `ml_cov_search` function implements a machine learning-based methodology for covariate selection in population modeling. This function is part of a broader workflow that includes data splitting, covariate selection using Lasso and Boruta algorithms, and a voting mechanism to ensure robust covariate selection.
+Identifies covariates associated with empirical Bayes estimates (EBEs) of
+population parameters using optional Lasso pre-screening, Boruta feature
+selection with a tree-based learner, and a fold-wise voting rule.
 }
 \details{
-The methodology consists of the following steps:
+The eight specification variants
+(random forest / XGBoost / LightGBM / CatBoost, each with or without Lasso)
+are consolidated here. Defaults follow the recommended workflow from the
+v2 evaluation study: Lasso with `lambda.min` plus Boruta-LightGBM.
 
-1. **Data Splitting:** The dataset, comprising empirical Bayesian estimates of individual parameters (EBEs) and covariates, is randomly split into five folds.
-
-2. **Covariate Selection:** 
-   - **Lasso Algorithm:** Applied to reduce irrelevant or redundant covariates that may be correlated.
-   - **Boruta Algorithm:** Iteratively identifies relevant covariates based on their importance scores, further refining the selection.
-
-3. **Voting Mechanism:** The final set of covariates is determined through a voting process across the five folds. Covariates that consistently appear as significant across the folds are selected for further analysis.
-
-The selected covariates are then used to train an XGBoost model, and the function generates SHAP (SHapley Additive exPlanations) summary plots for model interpretation. The primary goal is to identify robust covariates that influence the population parameters while ensuring that no significant trends are overlooked.
+Diagnostic SHAP and residual plots are **not** computed here; use
+[generate_shap_summary_plot()] and [generate_residuals_plot()] afterwards.
 }
 \examples{
-# Example usage:
 \dontrun{
 result <- ml_cov_search(
-  data = my_data, 
-  pop_param = c("CL", "V"),
+  data = my_data,
+  pop_param = c("CL", "V1"),
   cov_continuous = c("AGE", "WT"),
-  cov_factors = c("SEX", "OCC")
+  cov_factors = c("SEX", "RACE"),
+  boruta_algorithm = "lightgbm",
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.min"
 )
 }
 

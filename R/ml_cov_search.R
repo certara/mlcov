@@ -1,276 +1,319 @@
 `%>%` <- dplyr::`%>%`
 
-#' Covariate Selection for Population Parameters using Machine Learning
+#' Machine-learning covariate search
 #'
-#' The `ml_cov_search` function implements a machine learning-based methodology for covariate selection in population modeling. This function is part of a broader workflow that includes data splitting, covariate selection using Lasso and Boruta algorithms, and a voting mechanism to ensure robust covariate selection.
+#' Identifies covariates associated with empirical Bayes estimates (EBEs) of
+#' population parameters using optional Lasso pre-screening, Boruta feature
+#' selection with a tree-based learner, and a fold-wise voting rule.
 #'
-#' The methodology consists of the following steps:
-#' 
-#' 1. **Data Splitting:** The dataset, comprising empirical Bayesian estimates of individual parameters (EBEs) and covariates, is randomly split into five folds.
-#' 
-#' 2. **Covariate Selection:** 
-#'    - **Lasso Algorithm:** Applied to reduce irrelevant or redundant covariates that may be correlated.
-#'    - **Boruta Algorithm:** Iteratively identifies relevant covariates based on their importance scores, further refining the selection.
-#' 
-#' 3. **Voting Mechanism:** The final set of covariates is determined through a voting process across the five folds. Covariates that consistently appear as significant across the folds are selected for further analysis.
+#' The eight specification variants
+#' (random forest / XGBoost / LightGBM / CatBoost, each with or without Lasso)
+#' are consolidated here. Defaults follow the recommended workflow from the
+#' v2 evaluation study: Lasso with `lambda.min` plus Boruta-LightGBM.
 #'
-#' The selected covariates are then used to train an XGBoost model, and the function generates SHAP (SHapley Additive exPlanations) summary plots for model interpretation. The primary goal is to identify robust covariates that influence the population parameters while ensuring that no significant trends are overlooked.
+#' Diagnostic SHAP and residual plots are **not** computed here; use
+#' [generate_shap_summary_plot()] and [generate_residuals_plot()] afterwards.
 #'
-#' @param data A data frame containing the input variables, including both the population parameters and covariates.
-#' @param pop_param Character vector of population parameter names. These parameters are the target variables for which covariate effects will be analyzed.
-#' @param cov_continuous Character vector of continuous covariate names. These covariates are treated as numeric variables in the analysis.
-#' @param cov_factors Character vector of categorical or occasion covariate names. These covariates are treated as factors and may be one-hot encoded if they have more than two levels.
-#' @param seed Numeric value for setting the random seed using \code{set.seed()} within the function, ensuring reproducibility. Defaults to 123.
+#' @param data A data frame containing EBEs, covariates, and an `ID` column
+#'   (used to keep one row per subject).
+#' @param pop_param Character vector of population parameter (EBE) names.
+#' @param cov_continuous Character vector of continuous covariate names.
+#'   Optional if `cov_factors` is supplied.
+#' @param cov_factors Character vector of categorical covariate names.
+#'   Optional if `cov_continuous` is supplied. Multi-level factors are
+#'   dummy-encoded for XGBoost and Lasso; tree-based Boruta learners keep
+#'   them as factors.
+#' @param seed Numeric seed passed to [set.seed()] at the start of each
+#'   parameter search. Defaults to 123.
+#' @param use_lasso Logical. If `TRUE` (default), Lasso pre-filters covariates
+#'   within each training fold before Boruta.
+#' @param lambda_lasso Lasso penalty chosen by [glmnet::cv.glmnet()]:
+#'   `"lambda.min"` (default) or `"lambda.1se"`.
+#' @param boruta_algorithm Base learner used by Boruta. One of `"lightgbm"`
+#'   (default), `"randomForest"`, `"xgboost"`, or `"catboost"`. CatBoost
+#'   requires the optional `catboost` package.
+#' @param boruta_pvalue Significance level passed to [Boruta::Boruta()].
+#'   Defaults to 0.01.
+#' @param n_folds Number of outer cross-validation folds (caret 80/20
+#'   train/test splits). Defaults to 5. Inner Lasso CV uses at least 3 folds.
+#' @param vote_threshold Minimum number of folds in which a covariate must be
+#'   confirmed to be retained (`Freq >= vote_threshold`). Defaults to 2.
+#'   The v2 manuscript majority rule ("more than two out of five") corresponds
+#'   to `vote_threshold = 3`.
+#' @param log_ebes Logical. If `TRUE` (default), EBEs are log-transformed
+#'   before model fitting and must be strictly positive.
+#' @param boruta_max_runs Maximum Boruta iterations (`maxRuns`). Defaults to
+#'   200. The v2 manuscript describes up to 100 iterations; pass
+#'   `boruta_max_runs = 100` to match that setting.
 #'
-#' @return A list of class \code{mlcov_data} containing the following components:
-#' \item{result_ML}{A data frame with the selected covariates for each population parameter, along with the RMSE of the model using the selected covariates and the reference RMSE (baseline model).}
-#' \item{result_5folds}{A data frame containing the selected covariates from each of the 5 cross-validation folds.}
-#' \item{pop_param}{The population parameter names provided as input.}
-#' \item{cov_continuous}{The continuous covariates provided as input.}
-#' \item{cov_factors}{The categorical covariates provided as input.}
-#' \item{shap_data}{A list of SHAP values and long-format data for each population parameter, used for model interpretation and visualization.}
-#' \item{shap_seed}{A list of random seeds used for generating SHAP plots, ensuring reproducibility.}
+#' @return An object of class `mlcov_data` with:
+#' \item{result_ML}{Data frame of voted covariates per parameter (`cov_selected`).}
+#' \item{result_5folds}{Per-fold confirmed covariates (name kept for compatibility
+#'   even when `n_folds` is not 5).}
+#' \item{result_folds}{Identical to `result_5folds`.}
+#' \item{pop_param, cov_continuous, cov_factors}{The names supplied by the caller.}
+#' \item{settings}{List of resolved arguments (`use_lasso`, `lambda_lasso`,
+#'   `boruta_algorithm`, `boruta_pvalue`, `n_folds`, `vote_threshold`,
+#'   `log_ebes`, `boruta_max_runs`, `seed`).}
 #'
 #' @examples
-#' # Example usage:
 #' \dontrun{
 #' result <- ml_cov_search(
-#'   data = my_data, 
-#'   pop_param = c("CL", "V"),
+#'   data = my_data,
+#'   pop_param = c("CL", "V1"),
 #'   cov_continuous = c("AGE", "WT"),
-#'   cov_factors = c("SEX", "OCC")
+#'   cov_factors = c("SEX", "RACE"),
+#'   boruta_algorithm = "lightgbm",
+#'   use_lasso = TRUE,
+#'   lambda_lasso = "lambda.min"
 #' )
 #' }
 #'
 #' @export
-#'
-ml_cov_search <- function(data, pop_param, cov_continuous, cov_factors, seed = 123) {
-  
-  if (missing(cov_continuous) &&
-      missing(cov_factors)) {
+ml_cov_search <- function(data,
+                          pop_param,
+                          cov_continuous,
+                          cov_factors,
+                          seed = 123,
+                          use_lasso = TRUE,
+                          lambda_lasso = c("lambda.min", "lambda.1se"),
+                          boruta_algorithm = c("lightgbm", "randomForest",
+                                               "xgboost", "catboost"),
+                          boruta_pvalue = 0.01,
+                          n_folds = 5L,
+                          vote_threshold = 2L,
+                          log_ebes = TRUE,
+                          boruta_max_runs = 200L) {
+
+  lambda_lasso <- match.arg(lambda_lasso)
+  boruta_algorithm <- match.arg(boruta_algorithm)
+
+  if (missing(cov_continuous) && missing(cov_factors)) {
     stop(
-      "No covariates specified. Use `cov_continuous` and/or `cov_factors` argument to specify covariates to include in `ml_cov_search()`."
+      "No covariates specified. Use `cov_continuous` and/or `cov_factors` ",
+      "to specify covariates to include in `ml_cov_search()`.",
+      call. = FALSE
     )
   }
-  if (missing(cov_continuous)) {
-    cov_continuous <- NULL
+  if (missing(cov_continuous) || is.null(cov_continuous)) {
+    cov_continuous <- character()
   }
-  if (missing(cov_factors)) {
-    cov_factors <- NULL
+  if (missing(cov_factors) || is.null(cov_factors)) {
+    cov_factors <- character()
   }
-  
-  # Check that covariates supplied by user exist in the data
+
+  if (is.null(pop_param) || length(pop_param) == 0) {
+    stop("`pop_param` must contain at least one parameter name.", call. = FALSE)
+  }
+
   data_validation(data, pop_param, cov_continuous, cov_factors)
+  validate_ml_cov_search_args(
+    seed = seed,
+    use_lasso = use_lasso,
+    boruta_pvalue = boruta_pvalue,
+    n_folds = n_folds,
+    vote_threshold = vote_threshold,
+    log_ebes = log_ebes,
+    boruta_max_runs = boruta_max_runs,
+    boruta_algorithm = boruta_algorithm
+  )
 
-  # Check if seed is numeric. 
-  stopifnot(is.numeric(seed))
+  n_folds <- as.integer(n_folds)
+  vote_threshold <- as.integer(vote_threshold)
+  boruta_max_runs <- as.integer(boruta_max_runs)
+  use_lasso <- isTRUE(use_lasso)
+  log_ebes <- isTRUE(log_ebes)
+  use_matrix <- identical(boruta_algorithm, "xgboost")
 
-  stopifnot(requireNamespace("caret", quietly = TRUE))
-  
-  # Select columns and generate data for XGBoost
   data <- col_select(data, pop_param, cov_continuous, cov_factors)
   pop_parameters <- data %>% dplyr::select(dplyr::all_of(pop_param))
-  factors <- data %>% dplyr::select(dplyr::all_of(cov_factors))
-  continuous <- data %>% dplyr::select(dplyr::all_of(cov_continuous))
+  factors <- if (length(cov_factors) > 0) {
+    data %>% dplyr::select(dplyr::all_of(cov_factors))
+  } else {
+    data[, integer(), drop = FALSE]
+  }
+  continuous <- if (length(cov_continuous) > 0) {
+    data %>% dplyr::select(dplyr::all_of(cov_continuous))
+  } else {
+    data[, integer(), drop = FALSE]
+  }
 
-  # One-hot encoding of categorical covariates for covariates with more than 2 levels
-  dat_XGB <- generate_dat_XGB(pop_parameters, factors, continuous)
- 
-  full_covariate_xgm <- names(dat_XGB)
-  full_covariate_xgm <- setdiff(full_covariate_xgm, pop_param)
+  if (use_matrix) {
+    dat_encoded <- prepare_xgb_frame(pop_parameters, factors, continuous)
+  } else {
+    dat_encoded <- prepare_tree_frame(pop_parameters, factors, continuous)
+  }
 
-  # Assign the independent and dependent covariates
-  x_xgb <- data.matrix(dat_XGB[, c(full_covariate_xgm)])
+  full_covariate <- setdiff(names(dat_encoded), pop_param)
+  if (length(full_covariate) == 0) {
+    stop("No covariate columns remain after data preparation.", call. = FALSE)
+  }
 
-  # Creation of results datasets for selected covariates of the 5 folds
-  result_5folds <- data.frame(
-    fold1 = rep(NA, length(pop_param)),
-    fold2 = rep(NA, length(pop_param)),
-    fold3 = rep(NA, length(pop_param)),
-    fold4 = rep(NA, length(pop_param)),
-    fold5 = rep(NA, length(pop_param))
+  if (use_matrix) {
+    x_pred <- as.data.frame(
+      data.matrix(dat_encoded[, full_covariate, drop = FALSE])
+    )
+  } else {
+    x_pred <- dat_encoded[, full_covariate, drop = FALSE]
+  }
+
+  imp_spec <- boruta_importance_spec(boruta_algorithm)
+
+  result_folds <- as.data.frame(
+    matrix(NA_character_, nrow = length(pop_param), ncol = n_folds),
+    stringsAsFactors = FALSE
   )
-  rownames(result_5folds) <- pop_param
+  names(result_folds) <- paste0("fold", seq_len(n_folds))
+  rownames(result_folds) <- pop_param
 
   pb <- progress::progress_bar$new(
-    format = "[:bar] :percent :elapsed elapsed / :eta remaining", total = length(pop_param) * 6, clear = FALSE, show_after = 0)
+    format = "[:bar] :percent :elapsed elapsed / :eta remaining",
+    total = length(pop_param) * (n_folds + 1L),
+    clear = FALSE,
+    show_after = 0
+  )
+
   for (i in pop_param) {
-    # Use same seed for each iteration of loop
     set.seed(seed)
-    
     pb$message(paste0("Searching covariate effects on ", i))
     pb$tick()
-    
-    y_xgb <- log(dat_XGB[, i])
 
-    # Cross-validation
-    ## create 5 partition of the data ( using K-1 folds (80%) as the training set and the remaining one fold (20%) as the test set repeating steps for K iterations )
-    x <- as.data.frame(x_xgb)
-    folds <- caret::createFolds(seq(1, nrow(x_xgb)), k = 5, list = TRUE, returnTrain = FALSE)
+    y_all <- transform_ebes(dat_encoded[[i]], log_ebes, i)
+    folds <- caret::createFolds(
+      seq_len(nrow(x_pred)),
+      k = n_folds,
+      list = TRUE,
+      returnTrain = FALSE
+    )
 
-    for (j in 1:5) {
+    for (j in seq_len(n_folds)) {
       pb$tick()
-      train.ind <- folds[[j]]
-      testing <- x[train.ind, ] # Fold k for testing
-      training <- x[-train.ind, ] # Remaining (k-1) for training
-      training <- as.matrix(training)
-      testing <- as.matrix(testing)
+      test_ind <- folds[[j]]
+      training <- x_pred[-test_ind, , drop = FALSE]
+      y_train <- y_all[-test_ind]
 
-      y <- as.data.frame(y_xgb)
-      y_xgb_train <- y[-train.ind, ]
-      y_xgb_test <- y[train.ind, ]
+      train_sel <- apply_lasso_filter(
+        training = training,
+        y = y_train,
+        use_lasso = use_lasso,
+        lambda_lasso = lambda_lasso,
+        n_folds = n_folds,
+        cov_factors = cov_factors,
+        keep_dummies = use_matrix
+      )
+      if (is.null(train_sel) || ncol(train_sel) == 0) {
+        next
+      }
 
-      # Lasso regression for variable selection
-      X <- as.matrix(training)
-      Y <- as.matrix(y_xgb_train)
-      # Perform k-fold cross-validation to find optimal lambda value
-      cvfit <- glmnet::cv.glmnet(X, Y, alpha = 1, family = "gaussian")
-      # Extract the non-zero coefficients from the model at the optimal value of the regularization parameter
-      lasso.coef <- coef(cvfit, s = cvfit$lambda.1se)[-1, ]
-      selected.vars <- names(lasso.coef[lasso.coef != 0])
-
-      # create new training and testing sets using only selected covariates by lasso
-      train.lasso <- training[, selected.vars]
-      train.lasso <- as.data.frame(train.lasso)
-      colnames(train.lasso) <- c(selected.vars)
-
-      # Boruta performed on the covariates selected by lasso
-      if (length(selected.vars) != 0) {
-        xgb.boruta <- Boruta::Boruta(
-          train.lasso,
-          y = y_xgb_train,
-          maxRuns = 200,
-          doTrace = 0,
-          getImp = Boruta::getImpXgboost,
-          nrounds = 200,
-          objective = "reg:squarederror"
+      if (!use_matrix) {
+        train_sel <- retype_tree_predictors(
+          train_sel,
+          cov_continuous,
+          cov_factors
         )
-
-        # Extracting the result of Boruta algorithm (keep confirmed)
-        boruta.df <- Boruta::attStats(xgb.boruta)
-        feature.imp <- row.names(boruta.df)[which(boruta.df$decision == "Confirmed")]
-
-        result_5folds[i, j] <- paste(feature.imp, collapse = ', ')
-
-
       }
+
+      feature_imp <- run_boruta(
+        x = train_sel,
+        y = y_train,
+        pValue = boruta_pvalue,
+        maxRuns = boruta_max_runs,
+        get_imp = imp_spec$get_imp,
+        extra = imp_spec$extra
+      )
+      result_folds[i, j] <- paste(feature_imp, collapse = ", ")
     }
   }
 
-  # Final covariate selection with a voting mechanism
-  result_ML <- data.frame(cov_selected = rep("", length(pop_param)))
-  rownames(result_ML) <- pop_param
+  result_ML <- vote_covariates(result_folds, pop_param, vote_threshold)
 
-  res <- t(result_5folds[,1:5])
-  res[res == ""] <- NA
-
-  for (i in pop_param) {
-    list_cov <- strsplit(as.character(res[, i]), ",")
-    list_cov_nb <- trimws(unlist(list_cov))
-    comptage <- as.data.frame(table(list_cov_nb))
-    if (nrow(comptage) != 0) {
-    filtered_vars <- comptage %>% dplyr::filter(Freq >= 2) %>% dplyr::select(list_cov_nb)
-    variable_list <- as.character(filtered_vars$list_cov_nb)
-    cov_selected <- paste(variable_list, collapse = ", ")
-    result_ML[i, 1] <- cov_selected
-    }
-  }
-
-
-  result_ML$RMSE <- rep(NA,length(pop_param))
-  result_ML$RMSE_ref <- rep(NA,length(pop_param))
-
-
-
-  # Evaluation of model with selected covariates
-
-  for (i in pop_param) {
-    y_xgb <- log(dat_XGB[, i])
-
-    RMSE <- rep(NA,5)
-    RMSE_ref <- rep(NA,5)
-
-    if (result_ML[i, 1] != ""){
-      list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
-      x.selected_final <- as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
-      folds <- caret::createFolds(seq(1,nrow(x.selected_final)), k = 5, list = TRUE, returnTrain = FALSE)
-
-      for (j in 1:5){
-
-        train.ind <- folds[[j]]
-        testing=x.selected_final[train.ind, ] #the fold k for the test
-        training=x.selected_final[-train.ind, ] #the reamaining (k-1) for the train
-        training <- as.matrix(training)
-        testing <- as.matrix(testing)
-
-        y <- as.data.frame(y_xgb)
-        y.xgm_train <- y[-train.ind,]
-        y.xgm_test <- y[train.ind,]
-
-
-        if (length(list_cov[[1]]) != 0 ) {
-          xgb.mod <- generate_xgb.mod(data = training, label = y.xgm_train)
-          
-          # predict on the test set with the new model
-          y.xgb.pred <- predict(xgb.mod, newdata = testing)
-          # evaluate the performance of the model
-          RMSE[j] <- Metrics::rmse(y.xgm_test,y.xgb.pred)
-          result_ML[i,2] <- mean(RMSE,na.rm = TRUE)
-
-
-
-          # Calculate the reference RMSE (baseline model without any covariates) by using the mean of the training y values and comparing it with the test y values
-          mean_y <- mean(y.xgm_train)
-          y.mean <- rep(mean_y, length(y.xgm_test))
-          RMSE_ref[j] <-  Metrics::rmse(y.xgm_test,y.mean)
-          result_ML[i,3] <- mean(RMSE_ref,na.rm = TRUE)
-
-
-        }
-
-      }
-    }
-  }
-
-  # Initialize an empty list to store the SHAP summary data and seed information
-  shap_data <- list()
-  shap_seed <- list()
-
-  # Interpretation of Selected covariates Beeswarm Plots
-  for (i in pop_param) {
-    y_xgb <- log(dat_XGB[, i])
-    
-    if (result_ML[i, 1] != "") {
-      list_cov <- strsplit(gsub(" ", "", result_ML[i, 1]), ",")
-      x.selected_final <-
-        as.matrix(dat_XGB %>% dplyr::select(dplyr::all_of(list_cov[[1]])))
-      
-      if (length(list_cov[[1]]) != 0) {
-        xgb.mod_final <- generate_xgb.mod(data = x.selected_final, label = y_xgb)
-        
-        # Generate SHAP summary plot for the current parameter
-        shap_values <- SHAPforxgboost::shap.values(xgb_model = xgb.mod_final, X_train = x.selected_final)
-        shap_long <- SHAPforxgboost::shap.prep(xgb_model = xgb.mod_final, X_train = x.selected_final)
-        
-        # Store shap data and seed
-        shap_data[[i]] <- list(shap_values = shap_values, shap_long = shap_long)
-        shap_seed[[i]] <- .Random.seed
-        
-      }
-    }
-  }
-
-  # Return the result_ML table and the SHAP plots for each parameter
-  return(
+  structure(
     list(
       result_ML = result_ML,
-      result_5folds = result_5folds,
+      result_5folds = result_folds,
+      result_folds = result_folds,
       pop_param = pop_param,
-      cov_continuous = cov_continuous, 
+      cov_continuous = cov_continuous,
       cov_factors = cov_factors,
-      shap_data = shap_data,
-      shap_seed = shap_seed
-    ) %>% structure(class = "mlcov_data")
+      settings = list(
+        use_lasso = use_lasso,
+        lambda_lasso = lambda_lasso,
+        boruta_algorithm = boruta_algorithm,
+        boruta_pvalue = boruta_pvalue,
+        n_folds = n_folds,
+        vote_threshold = vote_threshold,
+        log_ebes = log_ebes,
+        boruta_max_runs = boruta_max_runs,
+        seed = seed
+      )
+    ),
+    class = "mlcov_data"
   )
-} 
+}
 
+#' Validate scalar arguments for [ml_cov_search()]
+#'
+#' @keywords internal
+#' @noRd
+validate_ml_cov_search_args <- function(seed,
+                                        use_lasso,
+                                        boruta_pvalue,
+                                        n_folds,
+                                        vote_threshold,
+                                        log_ebes,
+                                        boruta_max_runs,
+                                        boruta_algorithm) {
+  if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed)) {
+    stop("`seed` must be a single finite numeric value.", call. = FALSE)
+  }
+  if (!is.logical(use_lasso) || length(use_lasso) != 1L || is.na(use_lasso)) {
+    stop("`use_lasso` must be a single logical value.", call. = FALSE)
+  }
+  if (!is.logical(log_ebes) || length(log_ebes) != 1L || is.na(log_ebes)) {
+    stop("`log_ebes` must be a single logical value.", call. = FALSE)
+  }
+  if (!is.numeric(boruta_pvalue) || length(boruta_pvalue) != 1L ||
+      !is.finite(boruta_pvalue) || boruta_pvalue <= 0 || boruta_pvalue >= 1) {
+    stop("`boruta_pvalue` must be a single number in (0, 1).", call. = FALSE)
+  }
+  if (!is.numeric(n_folds) || length(n_folds) != 1L ||
+      is.na(n_folds) || n_folds < 2) {
+    stop("`n_folds` must be an integer >= 2.", call. = FALSE)
+  }
+  if (!is.numeric(vote_threshold) || length(vote_threshold) != 1L ||
+      is.na(vote_threshold) || vote_threshold < 1) {
+    stop("`vote_threshold` must be an integer >= 1.", call. = FALSE)
+  }
+  if (as.integer(vote_threshold) > as.integer(n_folds)) {
+    stop("`vote_threshold` cannot exceed `n_folds`.", call. = FALSE)
+  }
+  if (!is.numeric(boruta_max_runs) || length(boruta_max_runs) != 1L ||
+      is.na(boruta_max_runs) || boruta_max_runs < 2) {
+    stop("`boruta_max_runs` must be an integer >= 2.", call. = FALSE)
+  }
+
+  if (identical(boruta_algorithm, "lightgbm") &&
+      !requireNamespace("lightgbm", quietly = TRUE)) {
+    stop(
+      "Package 'lightgbm' is required for boruta_algorithm = \"lightgbm\".",
+      call. = FALSE
+    )
+  }
+  if (identical(boruta_algorithm, "catboost") &&
+      !requireNamespace("catboost", quietly = TRUE)) {
+    stop(
+      "The 'catboost' package is required for boruta_algorithm = \"catboost\". ",
+      "It is not on CRAN; see https://catboost.ai/en/docs/installation/r-installation.",
+      call. = FALSE
+    )
+  }
+  if (identical(boruta_algorithm, "xgboost") &&
+      !requireNamespace("xgboost", quietly = TRUE)) {
+    stop(
+      "Package 'xgboost' is required for boruta_algorithm = \"xgboost\".",
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
