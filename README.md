@@ -1,37 +1,38 @@
 
 # mlcov
 
-R package for selection of covariate effects using ML.
+R package for selection of covariate effects using machine learning.
 
-The methodology implemented in the `mlcov` R package consists of 4 key
-steps:
+The workflow in `mlcov` has four steps:
 
-1.) The dataset, comprised of empirical Bayesian estimates of individual
-parameters (EBEs) and covariate sets, is randomly split into five folds
-(step 1, data splitting).
+1.  **Data splitting.** The data set of empirical Bayes estimates (EBEs)
+    and covariates is randomly split into `n_folds` folds (default 5).
 
-2.) The covariate selection (step 2) is performed by applying the Lasso
-algorithm to reduce irrelevant or redundant covariates due to
-correlation followed by the Boruta algorithm to iteratively identify
-relevant covariates based on their importance scores.
+2.  **Covariate selection.** Optional Lasso pre-screening reduces
+    correlated or redundant covariates. Boruta then confirms relevant
+    covariates using a tree-based learner: LightGBM (default), random
+    forest, XGBoost, or CatBoost.
 
-3.) A voting mechanism (step 3) across folds determines the final
-selected covariates based on their robustness. Note that these first
-three steps are implemented by a simple call to the function
-`ml_cov_search`.
+3.  **Voting.** Covariates confirmed in at least `vote_threshold` folds
+    (default 2) are retained. Steps 1–3 are a single call to
+    `ml_cov_search()`.
 
-4.) Finally, residual plots (step 4) are employed to evaluate the
-covariate-parameter relationships.Following the covariate selection
-using the proposed ML method, an XGboost model is trained on the
-selected covariates and the remaining trends between residuals
-(difference between the actual target values and the model’s predicted
-values) and unselected covariates are examined. The primary goal is to
-ensure that the ML method did not overlook any significant trends or
-relationships that could be captured by additional covariates. This step
-is implemented in a separate function `generate_residual_plots`.
+4.  **Diagnostics (optional).** `generate_shap_summary_plot()` explains
+    the selected set with XGBoost SHAP values.
+    `generate_residuals_plot()` checks unselected covariates for
+    leftover residual trends.
 
-Visit the [PAGE Abstract](https://www.page-meeting.org/?abstract=10996)
-to learn more.
+The recommended default matches the v2 evaluation study: Lasso with
+`lambda.min` plus Boruta-LightGBM. Random forest remains available but
+had high Type I error in that study and is not the recommended default.
+
+A worked argument reference, manuscript-faithful settings, and
+diagnostic examples are in the vignette
+`vignette("mlcov-updated-usage", package = "mlcov")`.
+
+Visit the [PAGE 2024
+abstract](https://www.page-meeting.org/?abstract=10996) for the original
+package description.
 
 ## Installation
 
@@ -42,6 +43,10 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 
 remotes::install_github("certara/mlcov")
 ```
+
+CatBoost is optional and is not on CRAN. Install it only if you set
+`boruta_algorithm = "catboost"`; see the [CatBoost R installation
+notes](https://catboost.ai/en/docs/installation/r-installation).
 
 # Usage
 
@@ -54,153 +59,87 @@ data_file <- system.file(package = "mlcov", "supplementary", "tab33")
 data <- read.table(data_file, skip = 1, header = TRUE)
 ```
 
-Perform covariate search:
+Perform covariate search (LightGBM + Lasso `lambda.min` by default):
 
 ``` r
 result <- ml_cov_search(
   data = data,
-  pop_param = c("V1","CL"),
-  cov_continuous = c("AGE","WT","HT","BMI","ALB","CRT",
-                    "FER","CHOL","WBC","LYPCT","RBC",
-                    "HGB","HCT","PLT"),
-  cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")
+  pop_param = c("V1", "CL"),
+  cov_continuous = c("AGE", "WT", "HT", "BMI", "ALB", "CRT",
+                    "FER", "CHOL", "WBC", "LYPCT", "RBC",
+                    "HGB", "HCT", "PLT"),
+  cov_factors = c("SEX", "RACE", "DIAB", "ALQ", "WACT", "SMQ")
 )
-```
-
-    ## Searching covariate effects on V1
-
-    ## Searching covariate effects on CL
-
-``` r
 print(result)
 ```
 
+    ## mlcov covariate search
+    ##   Algorithm:        lightgbm
+    ##   Lasso:            yes (lambda.min)
+    ##   Folds / vote:     5 / 2
+    ##   log_ebes:         TRUE
+    ##   Boruta p-value:   0.01
+    ##   Boruta maxRuns:   200
     ## 
-    ## Population Parameter:    V1 
+    ## Population Parameter:    V1
     ## --------------------------
-    ## Covariates Selected: SEX 
+    ## Covariates Selected: SEX, WT
     ## 
-    ## Population Parameter:    CL 
+    ## Population Parameter:    CL
     ## --------------------------
     ## Covariates Selected: AGE
+
+0.0.2-compatible search (XGBoost + Lasso `lambda.1se`), shown for the
+previous defaults. Not evaluated here so the README knit runs a single
+search:
+
+``` r
+result_xgb <- ml_cov_search(
+  data = data,
+  pop_param = c("V1", "CL"),
+  cov_continuous = c("AGE", "WT", "HT", "BMI", "ALB", "CRT",
+                    "FER", "CHOL", "WBC", "LYPCT", "RBC",
+                    "HGB", "HCT", "PLT"),
+  cov_factors = c("SEX", "RACE", "DIAB", "ALQ", "WACT", "SMQ"),
+  boruta_algorithm = "xgboost",
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.1se"
+)
+```
 
 Generate SHAP plots:
 
 ``` r
-generate_shap_summary_plot(
+shap_plots <- generate_shap_summary_plot(
   result,
-  x_bound = NULL,
-  dilute = FALSE,
-  scientific = FALSE,
-  my_format = NULL,
-  title = NULL,
-  title.position = 0.5,
-  ylab = NULL,
-  xlab = NULL
+  data,
+  title.position = 0.5
 )
+invisible(lapply(shap_plots, print))
 ```
 
-    ## $V1
-
-![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
-
-    ## 
-    ## $CL
-
-![](README_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
+![](README_files/figure-gfm/shap-1.png)<!-- -->![](README_files/figure-gfm/shap-2.png)<!-- -->
 
 Generate residual plots:
 
 ``` r
-generate_residuals_plot(data = data, result, pop_param = 'CL')
+cl_resid <- generate_residuals_plot(data = data, result, pop_param = "CL")
+if (is.null(cl_resid)) {
+  cat("No significant residual trends for CL.\n")
+} else {
+  invisible(lapply(cl_resid, print))
+}
 ```
 
-    ## Testing pvalue significance for WT
-
-    ## Testing pvalue significance for HT
-
-    ## Testing pvalue significance for BMI
-
-    ## Testing pvalue significance for ALB
-
-    ## Testing pvalue significance for CRT
-
-    ## Testing pvalue significance for FER
-
-    ## Testing pvalue significance for CHOL
-
-    ## Testing pvalue significance for WBC
-
-    ## Testing pvalue significance for LYPCT
-
-    ## Testing pvalue significance for RBC
-
-    ## Testing pvalue significance for HGB
-
-    ## Testing pvalue significance for HCT
-
-    ## Testing pvalue significance for PLT
-
-    ## Testing pvalue significance for SEX
-
-    ## Testing pvalue significance for RACE
-
-    ## Testing pvalue significance for DIAB
-
-    ## Testing pvalue significance for ALQ
-
-    ## Testing pvalue significance for WACT
-
-    ## Testing pvalue significance for SMQ
-
-    ## No residuals plots with a significant p-value for CL
-
-    ## NULL
+    ## No significant residual trends for CL.
 
 ``` r
-generate_residuals_plot(data = data, result, pop_param = 'V1')
+v1_resid <- generate_residuals_plot(data = data, result, pop_param = "V1")
+if (is.null(v1_resid)) {
+  cat("No significant residual trends for V1.\n")
+} else {
+  invisible(lapply(v1_resid, print))
+}
 ```
 
-    ## Testing pvalue significance for AGE
-
-    ## Testing pvalue significance for WT
-
-    ## Testing pvalue significance for HT
-
-    ## Testing pvalue significance for BMI
-
-    ## Testing pvalue significance for ALB
-
-    ## Testing pvalue significance for CRT
-
-    ## Testing pvalue significance for FER
-
-    ## Testing pvalue significance for CHOL
-
-    ## Testing pvalue significance for WBC
-
-    ## Testing pvalue significance for LYPCT
-
-    ## Testing pvalue significance for RBC
-
-    ## Testing pvalue significance for HGB
-
-    ## Testing pvalue significance for HCT
-
-    ## Testing pvalue significance for PLT
-
-    ## Testing pvalue significance for RACE
-
-    ## Testing pvalue significance for DIAB
-
-    ## Testing pvalue significance for ALQ
-
-    ## Testing pvalue significance for WACT
-
-    ## Testing pvalue significance for SMQ
-
-    ## $WT
-
-    ## `geom_smooth()` using formula = 'y ~ x'
-
-![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+    ## No significant residual trends for V1.

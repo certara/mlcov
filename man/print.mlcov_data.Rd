@@ -2,18 +2,19 @@
 % Please edit documentation in R/print.mlcov_data.R
 \name{print.mlcov_data}
 \alias{print.mlcov_data}
-\title{Print \code{mlcov_data}}
+\title{Print an `mlcov_data` object}
 \usage{
 \method{print}{mlcov_data}(x, ...)
 }
 \arguments{
-\item{x}{An \code{mlcov_data}.}
+\item{x}{An `mlcov_data` object from [ml_cov_search()].}
 
-\item{...}{Additional args.}
+\item{...}{Additional arguments (ignored).}
 }
 \value{
-Returns \code{x} invisibly.
+`x`, invisibly.
 }
 \description{
-Print generic used to return information about \code{mlcov_data} object
+Shows the resolved search settings and the voted covariates for each
+population parameter.
 }

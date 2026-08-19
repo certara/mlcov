@@ -2,4 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+vignettes/*.html
+vignettes/*_files
+README_cache/
+README.html
+README.knit.md
 
