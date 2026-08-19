@@ -1,0 +1,324 @@
+---
+title: "Updated ml_cov_search usage"
+author: "mlcov"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Updated ml_cov_search usage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
+)
+# Set to TRUE (or Sys.setenv(MLCOV_RUN_VIGNETTE = "true")) to run live searches
+# and diagnostic plots. Default is FALSE so R CMD check stays fast.
+run_live <- identical(tolower(Sys.getenv("MLCOV_RUN_VIGNETTE", "false")), "true")
+```
+
+# Purpose
+
+This vignette is the shareable usage script for **mlcov 0.1.0**. It documents every new `ml_cov_search()` argument, shows how those arguments map onto the v2 manuscript methods, and (when `run_live` is `TRUE`) runs the packaged `tab33` example.
+
+The manuscript simulation tables (Type I error, S1, S2 on 100 NONMEM replicates) **cannot** be reproduced from `tab33`. This file demonstrates that the package can invoke every Methods combination; it does not regenerate Figures 2–5.
+
+To knit with live outputs:
+
+```r
+Sys.setenv(MLCOV_RUN_VIGNETTE = "true")
+rmarkdown::render("vignettes/mlcov-updated-usage.Rmd")
+```
+
+```{r libs}
+library(mlcov)
+```
+
+# Data
+
+`tab33` is the packaged NONMEM-style example (one row per subject after `ID` is used). It is public demo data shipped with the package, not the NHANES simulation replicates from the paper.
+
+```{r load-data}
+data_file <- system.file("supplementary", "tab33", package = "mlcov")
+data <- read.table(data_file, skip = 1, header = TRUE)
+
+pop_param <- c("V1", "CL")
+cov_continuous <- c(
+  "AGE", "WT", "HT", "BMI", "ALB", "CRT", "FER", "CHOL",
+  "WBC", "LYPCT", "RBC", "HGB", "HCT", "PLT"
+)
+cov_factors <- c("SEX", "RACE", "DIAB", "ALQ", "WACT", "SMQ")
+```
+
+# New arguments
+
+`ml_cov_search()` now consolidates the eight specification variants
+(learner × Lasso on/off) into one function.
+
+```{r formals}
+formals(ml_cov_search)
+```
+
+| Argument | Default | Role |
+| --- | --- | --- |
+| `use_lasso` | `TRUE` | Lasso pre-screen within each training fold |
+| `lambda_lasso` | `"lambda.min"` | `"lambda.min"` or `"lambda.1se"` |
+| `boruta_algorithm` | `"lightgbm"` | `"lightgbm"`, `"randomForest"`, `"xgboost"`, `"catboost"` |
+| `boruta_pvalue` | `0.01` | Boruta significance level |
+| `n_folds` | `5` | Outer 80/20 splits (caret) |
+| `vote_threshold` | `2` | Keep covariates with `Freq >= vote_threshold` |
+| `log_ebes` | `TRUE` | Log-transform EBEs (must be > 0) |
+| `boruta_max_runs` | `200` | Boruta `maxRuns` |
+| `seed` | `123` | RNG seed per parameter |
+
+**Breaking changes from 0.0.2:** the default learner is LightGBM (was XGBoost); the default λ is `lambda.min` (was `lambda.1se`); SHAP/RMSE are no longer computed inside search.
+
+# Manuscript methods vs package defaults
+
+The v2 paper evaluates Boruta with random forest, XGBoost, LightGBM, and CatBoost, with and without Lasso, and with both λ rules. It recommends **Lasso `λ.min` + Boruta LightGBM**. Two settings differ from the implementation spec and are therefore explicit arguments:
+
+```{r manuscript-notes, echo=FALSE}
+notes <- data.frame(
+  setting = c(
+    "Learner",
+    "Lasso",
+    "Lambda",
+    "Outer folds",
+    "Vote rule",
+    "Boruta p-value",
+    "Boruta iterations",
+    "LightGBM",
+    "XGBoost",
+    "CatBoost",
+    "Random forest"
+  ),
+  manuscript = c(
+    "Compared all four; LightGBM recommended",
+    "With and without; Lasso recommended",
+    "Both λ.min and λ.1se; λ.min recommended overall",
+    "Five folds, 80/20 via caret",
+    "More than two of five (majority)",
+    "0.01 with Bonferroni (Boruta)",
+    "Up to 100 iterations",
+    "regression, RMSE, lr 0.1, 31 leaves, 200 rounds",
+    "200 rounds, squared-error loss",
+    "RMSE, depth 5, lr 0.05, 100 iterations",
+    "Available; excluded from later analyses (Type I ≥ 40%)"
+  ),
+  package = c(
+    "boruta_algorithm = \"lightgbm\" (default)",
+    "use_lasso = TRUE (default)",
+    "lambda_lasso = \"lambda.min\" (default)",
+    "n_folds = 5 (default)",
+    "vote_threshold = 2 (spec default); use 3 for the paper",
+    "boruta_pvalue = 0.01 (default)",
+    "boruta_max_runs = 200 (spec default); use 100 for the paper",
+    "getImpLightGBM uses those hyperparameters",
+    "getImpXgboost with nrounds = 200",
+    "getImpCatBoost uses those hyperparameters",
+    "boruta_algorithm = \"randomForest\" (not recommended)"
+  ),
+  stringsAsFactors = FALSE
+)
+knitr::kable(notes)
+```
+
+Paper-faithful call (recommended workflow in the conclusion):
+
+```{r manuscript-call, eval = FALSE}
+result_paper <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors,
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.min",
+  boruta_algorithm = "lightgbm",
+  boruta_pvalue = 0.01,
+  n_folds = 5,
+  vote_threshold = 3,
+  log_ebes = TRUE,
+  boruta_max_runs = 100,
+  seed = 123
+)
+```
+
+# Worked examples
+
+Live chunks below are gated by `run_live`. Calls are still shown so a colleague can copy them.
+
+## Default search (LightGBM + Lasso λ.min)
+
+```{r default-search, eval = run_live}
+result <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors
+)
+print(result)
+result$result_ML
+result$result_5folds
+result$settings
+```
+
+## Manuscript settings (majority vote, 100 Boruta runs)
+
+```{r paper-search, eval = run_live}
+result_paper <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors,
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.min",
+  boruta_algorithm = "lightgbm",
+  boruta_pvalue = 0.01,
+  n_folds = 5,
+  vote_threshold = 3,
+  log_ebes = TRUE,
+  boruta_max_runs = 100
+)
+print(result_paper)
+```
+
+## Contrast λ.1se and no Lasso
+
+The paper found λ.1se more conservative for isolated categorical effects, and λ.min better when correlated true effects co-exist. `use_lasso = FALSE` is the unprocessed Boruta path.
+
+```{r lambda-1se, eval = FALSE}
+result_1se <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors,
+  boruta_algorithm = "lightgbm",
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.1se"
+)
+```
+
+```{r no-lasso, eval = FALSE}
+result_nolasso <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors,
+  boruta_algorithm = "lightgbm",
+  use_lasso = FALSE
+)
+```
+
+## 0.0.2-compatible path (XGBoost + λ.1se)
+
+```{r xgb-legacy, eval = FALSE}
+result_xgb <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors,
+  boruta_algorithm = "xgboost",
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.1se",
+  vote_threshold = 2,
+  boruta_max_runs = 200
+)
+```
+
+## Other learners
+
+Random forest is supported but not recommended (high Type I error in the paper). CatBoost runs only if the optional `catboost` package is installed.
+
+```{r rf, eval = FALSE}
+result_rf <- ml_cov_search(
+  data,
+  pop_param = pop_param,
+  cov_continuous = cov_continuous,
+  cov_factors = cov_factors,
+  boruta_algorithm = "randomForest",
+  use_lasso = TRUE,
+  lambda_lasso = "lambda.min"
+)
+```
+
+```{r catboost, eval = FALSE}
+if (requireNamespace("catboost", quietly = TRUE)) {
+  result_cat <- ml_cov_search(
+    data,
+    pop_param = pop_param,
+    cov_continuous = cov_continuous,
+    cov_factors = cov_factors,
+    boruta_algorithm = "catboost",
+    use_lasso = TRUE,
+    lambda_lasso = "lambda.min"
+  )
+} else {
+  message(
+    "catboost is not installed. See ",
+    "https://catboost.ai/en/docs/installation/r-installation"
+  )
+}
+```
+
+# Diagnostics (optional; not in the v2 paper)
+
+SHAP and residual plots remain available as post-processing. They train an **XGBoost** interpreter on the selected covariates, regardless of the Boruta learner.
+
+```{r shap, eval = run_live}
+if (exists("result")) {
+  shap_plots <- generate_shap_summary_plot(result, data, title.position = 0.5)
+  shap_plots
+}
+```
+
+```{r residuals, eval = run_live}
+if (exists("result")) {
+  generate_residuals_plot(data, result, pop_param = "CL")
+  generate_residuals_plot(data, result, pop_param = "V1")
+}
+```
+
+# Methods combinations checklist
+
+Every combination in the manuscript Methods section is a single `ml_cov_search()` call:
+
+```{r combo-grid, echo=FALSE}
+algos <- c("lightgbm", "xgboost", "catboost", "randomForest")
+grid <- expand.grid(
+  boruta_algorithm = algos,
+  use_lasso = c(TRUE, FALSE),
+  lambda_lasso = c("lambda.min", "lambda.1se"),
+  stringsAsFactors = FALSE
+)
+grid <- grid[grid$use_lasso | grid$lambda_lasso == "lambda.min", ]
+grid$lambda_lasso[grid$use_lasso == FALSE] <- NA
+rownames(grid) <- NULL
+knitr::kable(
+  grid,
+  caption = "Call ml_cov_search() with each row. lambda_lasso is ignored when use_lasso is FALSE."
+)
+```
+
+Copy-paste template:
+
+```r
+ml_cov_search(
+  data, pop_param, cov_continuous, cov_factors,
+  boruta_algorithm = "<algorithm>",
+  use_lasso = TRUE,              # or FALSE
+  lambda_lasso = "lambda.min",   # or "lambda.1se"
+  n_folds = 5,
+  vote_threshold = 3,            # manuscript majority; spec default is 2
+  boruta_pvalue = 0.01,
+  boruta_max_runs = 100,         # manuscript; spec default is 200
+  log_ebes = TRUE,
+  seed = 123
+)
+```
