@@ -2,42 +2,36 @@
 % Please edit documentation in R/generate_residuals_plot.R
 \name{generate_residuals_plot}
 \alias{generate_residuals_plot}
-\title{Generate Residual Plots to Assess Covariate-Parameter Relationships}
+\title{Residual plots for covariates not selected by [ml_cov_search()]}
 \usage{
 generate_residuals_plot(data, result, pop_param, seed = 123)
 }
 \arguments{
-\item{data}{A data frame containing the input variables, including the population parameters and covariates.}
+\item{data}{The original data frame passed to [ml_cov_search()].}
 
-\item{result}{An object of class \code{mlcov_data}, obtained from the \code{\link{ml_cov_search}} function. This object contains the results of the covariate selection process.}
+\item{result}{An `mlcov_data` object from [ml_cov_search()].}
 
-\item{pop_param}{The name of the population parameter for which the residual plots are to be generated.}
+\item{pop_param}{Name of the population parameter to assess (length 1).}
 
-\item{seed}{A numeric value for setting the random seed using \code{set.seed()} within the function, ensuring reproducibility. Defaults to 123.}
+\item{seed}{Numeric seed. Defaults to 123.}
 }
 \value{
-A list of \code{ggplot} objects, each representing a residual plot for a different covariate. If no covariates meet the significance threshold, the function returns an empty list.
+A named list of ggplot objects, or `NULL` if nothing is plotted.
 }
 \description{
-The `generate_residuals_plot` function generates residual plots to evaluate the relationships between covariates and population parameters after the covariate selection process. This function is the final step in the `mlcov` methodology, which follows covariate selection using machine learning techniques (Lasso and Boruta) implemented in the \code{\link{ml_cov_search}} function.
+After covariate selection, an XGBoost model is trained on the selected
+covariates. Residuals (predicted minus observed EBEs on a held-out split)
+are tested against unselected covariates. A plot is returned for a
+covariate only if at least 6 of 10 random 80/20 partitions produce a
+p-value below 0.05.
 }
 \details{
-The function performs the following:
-
-1. **Residual Analysis:** After selecting covariates using the Lasso and Boruta algorithms, an XGBoost model is trained on the selected covariates. The function then examines the residuals—defined as the difference between the actual target values (population parameters) and the predicted values from the XGBoost model.
-
-2. **P-value Evaluation:** For each covariate not selected in the \code{\link{ml_cov_search}} function, the function evaluates the statistical significance of its relationship with the residuals. This is done by calculating p-values across 10 different data partitions.
-
-3. **Threshold for Plot Generation:** A residual plot is generated for a covariate only if at least 6 out of 10 p-values are less than 0.05, ensuring that the relationship is robust across different data partitions.
-
-The primary objective of this function is to verify that the machine learning-based covariate selection process did not overlook any significant covariate-parameter relationships. By visualizing residuals against covariates, the function helps identify any remaining trends or relationships that might suggest the need for additional covariates.
+If no covariate survives voting, covariates that appeared in any fold are
+used to train the residual model, and every covariate is screened.
 }
 \examples{
-# Example usage:
 \dontrun{
-plots <- generate_residuals_plot(data, 
-                                 result, 
-                                 pop_param = "CL")
+plots <- generate_residuals_plot(data, result, pop_param = "CL")
 }
 
 }
