@@ -40,7 +40,6 @@ stub_mlcov_result <- function(cov_selected = "WT",
   structure(
     list(
       result_ML = result_ML,
-      result_5folds = result_folds,
       result_folds = result_folds,
       pop_param = pop_param,
       cov_continuous = cov_continuous,

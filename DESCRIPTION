@@ -22,6 +22,7 @@ Authors@R: c(
 Description: Machine learning application for selection of covariate effects
     using Lasso pre-screening, the Boruta algorithm with tree-based learners
     (LightGBM, random forest, XGBoost, or CatBoost), and fold-wise voting.
+    Random forest requires the suggested package 'ranger'.
     CatBoost support is optional: the 'catboost' package is not on CRAN
     (install from GitHub release binaries; see
     https://catboost.ai/en/docs/installation/r-installation).
@@ -42,10 +43,11 @@ Imports:
 Suggests:
     catboost,
     knitr,
+    ranger,
     rmarkdown,
     testthat (>= 3.0.0)
 License: GPL-3
 Encoding: UTF-8
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0

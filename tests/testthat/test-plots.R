@@ -44,7 +44,21 @@ describe("generate_residuals_plot", {
   it("returns NULL when no fold selected any covariate", {
     dat <- synthetic_mlcov_data()
     result <- stub_mlcov_result(cov_selected = NA_character_)
-    result$result_5folds["CL", ] <- NA_character_
+    result$result_folds["CL", ] <- NA_character_
+    expect_message(
+      out <- generate_residuals_plot(dat, result, pop_param = "CL"),
+      "No variables selected"
+    )
+    expect_null(out)
+  })
+
+  it("reads empty folds from a legacy result_5folds object", {
+    dat <- synthetic_mlcov_data()
+    result <- stub_mlcov_result(cov_selected = NA_character_)
+    legacy_folds <- result$result_folds
+    legacy_folds["CL", ] <- NA_character_
+    result$result_folds <- NULL
+    result$result_5folds <- legacy_folds
     expect_message(
       out <- generate_residuals_plot(dat, result, pop_param = "CL"),
       "No variables selected"

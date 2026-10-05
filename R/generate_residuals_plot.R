@@ -60,7 +60,7 @@ generate_residuals_plot <- function(data, result, pop_param, seed = 123) {
   model_covs <- selected_voted
   if (!skip_selected) {
     model_covs <- covariates_from_folds(
-      result$result_5folds,
+      fold_results(result),
       pop_param,
       settings$n_folds
     )

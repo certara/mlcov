@@ -30,27 +30,25 @@
 #' @param lambda_lasso Lasso penalty chosen by [glmnet::cv.glmnet()]:
 #'   `"lambda.min"` (default) or `"lambda.1se"`.
 #' @param boruta_algorithm Base learner used by Boruta. One of `"lightgbm"`
-#'   (default), `"randomForest"`, `"xgboost"`, or `"catboost"`. CatBoost
-#'   requires the optional `catboost` package.
+#'   (default), `"randomForest"`, `"xgboost"`, or `"catboost"`. Random forest
+#'   requires the suggested `ranger` package. CatBoost requires the optional
+#'   `catboost` package.
 #' @param boruta_pvalue Significance level passed to [Boruta::Boruta()].
 #'   Defaults to 0.01.
 #' @param n_folds Number of outer cross-validation folds (caret 80/20
-#'   train/test splits). Defaults to 5. Inner Lasso CV uses at least 3 folds.
+#'   train/test splits). Defaults to 5. Lasso uses [glmnet::cv.glmnet()]'s
+#'   default of 10 folds and does not follow `n_folds`.
 #' @param vote_threshold Minimum number of folds in which a covariate must be
-#'   confirmed to be retained (`Freq >= vote_threshold`). Defaults to 2.
-#'   The v2 manuscript majority rule ("more than two out of five") corresponds
-#'   to `vote_threshold = 3`.
+#'   confirmed to be retained (`Freq >= vote_threshold`). Defaults to 2,
+#'   the final simulation-study rule (selection in at least two folds).
 #' @param log_ebes Logical. If `TRUE` (default), EBEs are log-transformed
 #'   before model fitting and must be strictly positive.
 #' @param boruta_max_runs Maximum Boruta iterations (`maxRuns`). Defaults to
-#'   200. The v2 manuscript describes up to 100 iterations; pass
-#'   `boruta_max_runs = 100` to match that setting.
+#'   200, matching the final simulation study.
 #'
 #' @return An object of class `mlcov_data` with:
 #' \item{result_ML}{Data frame of voted covariates per parameter (`cov_selected`).}
-#' \item{result_5folds}{Per-fold confirmed covariates (name kept for compatibility
-#'   even when `n_folds` is not 5).}
-#' \item{result_folds}{Identical to `result_5folds`.}
+#' \item{result_folds}{Per-fold confirmed covariates, one column per fold.}
 #' \item{pop_param, cov_continuous, cov_factors}{The names supplied by the caller.}
 #' \item{settings}{List of resolved arguments (`use_lasso`, `lambda_lasso`,
 #'   `boruta_algorithm`, `boruta_pvalue`, `n_folds`, `vote_threshold`,
@@ -197,7 +195,6 @@ ml_cov_search <- function(data,
         y = y_train,
         use_lasso = use_lasso,
         lambda_lasso = lambda_lasso,
-        n_folds = n_folds,
         cov_factors = cov_factors,
         keep_dummies = use_matrix
       )
@@ -230,7 +227,6 @@ ml_cov_search <- function(data,
   structure(
     list(
       result_ML = result_ML,
-      result_5folds = result_folds,
       result_folds = result_folds,
       pop_param = pop_param,
       cov_continuous = cov_continuous,
@@ -298,6 +294,9 @@ validate_ml_cov_search_args <- function(seed,
       "Package 'lightgbm' is required for boruta_algorithm = \"lightgbm\".",
       call. = FALSE
     )
+  }
+  if (identical(boruta_algorithm, "randomForest")) {
+    ensure_ranger()
   }
   if (identical(boruta_algorithm, "catboost") &&
       !requireNamespace("catboost", quietly = TRUE)) {

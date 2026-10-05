@@ -20,4 +20,5 @@
 ^README_files
 ^README_cache$
 ^README\.html$
+^mlcov\.code-workspace$
 ^README\.knit\.md$

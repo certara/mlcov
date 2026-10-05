@@ -12,7 +12,7 @@ describe("ml_cov_search mocked search", {
         cov_factors = c("SEX"),
         n_folds = 2,
         vote_threshold = 1,
-        boruta_algorithm = "randomForest",
+        boruta_algorithm = "lightgbm",
         use_lasso = FALSE,
         log_ebes = TRUE
       ),
@@ -21,9 +21,9 @@ describe("ml_cov_search mocked search", {
 
     expect_s3_class(result, "mlcov_data")
     expect_true(is.data.frame(result$result_ML))
-    expect_equal(ncol(result$result_5folds), 2)
-    expect_identical(result$result_folds, result$result_5folds)
-    expect_equal(result$settings$boruta_algorithm, "randomForest")
+    expect_null(result$result_5folds)
+    expect_equal(ncol(result$result_folds), 2)
+    expect_equal(result$settings$boruta_algorithm, "lightgbm")
     expect_false(result$settings$use_lasso)
     expect_equal(result$settings$n_folds, 2L)
     expect_equal(result$settings$vote_threshold, 1L)
@@ -42,12 +42,12 @@ describe("ml_cov_search mocked search", {
         cov_factors = "SEX",
         n_folds = 2,
         vote_threshold = 1,
-        boruta_algorithm = "randomForest",
+        boruta_algorithm = "lightgbm",
         use_lasso = TRUE
       ),
       .package = "mlcov"
     )
-    expect_true(all(is.na(result$result_5folds["CL", ])))
+    expect_true(all(is.na(result$result_folds["CL", ])))
     expect_true(is.na(result$result_ML["CL", "cov_selected"]))
   })
 
@@ -65,7 +65,7 @@ describe("ml_cov_search mocked search", {
         cov_continuous = "WT",
         n_folds = 2,
         vote_threshold = 1,
-        boruta_algorithm = "randomForest",
+        boruta_algorithm = "lightgbm",
         use_lasso = FALSE,
         log_ebes = FALSE
       ),

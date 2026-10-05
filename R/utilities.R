@@ -208,22 +208,17 @@ dummy_encode_predictors <- function(df, cov_factors) {
 
 #' Non-zero Lasso coefficients at the chosen lambda
 #'
+#' Cross-validation uses [glmnet::cv.glmnet()] defaults, including 10 folds.
+#' Outer `n_folds` is not passed through.
+#'
 #' @param X Numeric predictor matrix.
 #' @param y Response vector.
 #' @param lambda_lasso `"lambda.min"` or `"lambda.1se"`.
-#' @param n_folds Number of inner glmnet CV folds (at least 3 when possible).
 #' @return Character vector of selected column names (possibly empty).
 #' @keywords internal
 #' @noRd
-lasso_nonzero_names <- function(X, y, lambda_lasso, n_folds) {
+lasso_nonzero_names <- function(X, y, lambda_lasso) {
   if (ncol(X) == 0 || nrow(X) < 4) {
-    return(character())
-  }
-
-  inner_folds <- as.integer(n_folds)
-  inner_folds <- max(3L, inner_folds)
-  inner_folds <- min(inner_folds, nrow(X))
-  if (inner_folds < 3L) {
     return(character())
   }
 
@@ -231,8 +226,7 @@ lasso_nonzero_names <- function(X, y, lambda_lasso, n_folds) {
     x = X,
     y = as.numeric(y),
     alpha = 1,
-    family = "gaussian",
-    nfolds = inner_folds
+    family = "gaussian"
   )
   coefs <- stats::coef(cvfit, s = cvfit[[lambda_lasso]])
   coefs <- coefs[-1, , drop = TRUE]
@@ -248,7 +242,6 @@ lasso_nonzero_names <- function(X, y, lambda_lasso, n_folds) {
 #' @param y Training response.
 #' @param use_lasso Logical.
 #' @param lambda_lasso `"lambda.min"` or `"lambda.1se"`.
-#' @param n_folds Inner CV folds for glmnet.
 #' @param cov_factors Original categorical covariate names.
 #' @param keep_dummies If `TRUE`, return dummy column names (XGBoost path).
 #' @return A data frame of selected predictors, or `NULL` if Lasso keeps nothing.
@@ -258,7 +251,6 @@ apply_lasso_filter <- function(training,
                                y,
                                use_lasso,
                                lambda_lasso,
-                               n_folds,
                                cov_factors,
                                keep_dummies) {
   if (!isTRUE(use_lasso)) {
@@ -269,8 +261,7 @@ apply_lasso_filter <- function(training,
     selected <- lasso_nonzero_names(
       X = as.matrix(training),
       y = y,
-      lambda_lasso = lambda_lasso,
-      n_folds = n_folds
+      lambda_lasso = lambda_lasso
     )
     if (length(selected) == 0) {
       return(NULL)
@@ -284,8 +275,7 @@ apply_lasso_filter <- function(training,
   selected_dummies <- lasso_nonzero_names(
     X = encoded$X,
     y = y,
-    lambda_lasso = lambda_lasso,
-    n_folds = n_folds
+    lambda_lasso = lambda_lasso
   )
   if (length(selected_dummies) == 0) {
     return(NULL)
@@ -406,6 +396,22 @@ transform_ebes <- function(y, log_ebes, param_name) {
   y
 }
 
+#' Per-fold covariate selections
+#'
+#' New results store the table in `result_folds`. Objects saved by earlier
+#' versions store the same table in `result_5folds`.
+#'
+#' @param result An `mlcov_data` object.
+#' @return The fold data frame, or `NULL` if neither slot is present.
+#' @keywords internal
+#' @noRd
+fold_results <- function(result) {
+  if (!is.null(result$result_folds)) {
+    return(result$result_folds)
+  }
+  result$result_5folds
+}
+
 #' Settings stored on an `mlcov_data` object, with defaults for older objects
 #'
 #' @param result An `mlcov_data` object.
@@ -421,7 +427,7 @@ mlcov_settings <- function(result) {
     s$log_ebes <- TRUE
   }
   if (is.null(s$n_folds)) {
-    folds <- result$result_5folds
+    folds <- fold_results(result)
     s$n_folds <- if (!is.null(folds)) ncol(folds) else 5L
   }
   if (is.null(s$boruta_algorithm)) {

@@ -141,7 +141,6 @@ describe("encoding and voting helpers", {
       y = y,
       use_lasso = TRUE,
       lambda_lasso = "lambda.min",
-      n_folds = 5,
       cov_factors = c("SEX", "RACE"),
       keep_dummies = FALSE
     )
@@ -149,5 +148,17 @@ describe("encoding and voting helpers", {
       expect_true(all(names(out) %in% names(training)))
       expect_false(any(startsWith(names(out), "RACE") & names(out) != "RACE"))
     }
+  })
+})
+
+describe("legacy fold results", {
+  it("reads n_folds from result_5folds when a saved object has no result_folds", {
+    result <- stub_mlcov_result()
+    legacy_folds <- result$result_folds
+    result$result_folds <- NULL
+    result$result_5folds <- legacy_folds[, 1:4, drop = FALSE]
+    result$settings$n_folds <- NULL
+    expect_equal(mlcov_settings(result)$n_folds, 4L)
+    expect_identical(fold_results(result), result$result_5folds)
   })
 })

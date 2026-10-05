@@ -82,7 +82,7 @@ formals(ml_cov_search)
 
 # Manuscript methods vs package defaults
 
-The v2 paper evaluates Boruta with random forest, XGBoost, LightGBM, and CatBoost, with and without Lasso, and with both λ rules. It recommends **Lasso `λ.min` + Boruta LightGBM**. Two settings differ from the implementation spec and are therefore explicit arguments:
+The v2 paper evaluates Boruta with random forest, XGBoost, LightGBM, and CatBoost, with and without Lasso, and with both λ rules. It recommends **Lasso `λ.min` + Boruta LightGBM**. Package defaults match that final study: a covariate kept when it is confirmed in at least two folds (`vote_threshold = 2`), and up to 200 Boruta iterations (`boruta_max_runs = 200`). An earlier draft of the manuscript mentioned a threshold of three and 100 iterations; those were updated before the reported results.
 
 ```{r manuscript-notes, echo=FALSE}
 notes <- data.frame(
@@ -104,9 +104,9 @@ notes <- data.frame(
     "With and without; Lasso recommended",
     "Both λ.min and λ.1se; λ.min recommended overall",
     "Five folds, 80/20 via caret",
-    "More than two of five (majority)",
+    "Confirmed in at least two of five folds",
     "0.01 with Bonferroni (Boruta)",
-    "Up to 100 iterations",
+    "Up to 200 iterations",
     "regression, RMSE, lr 0.1, 31 leaves, 200 rounds",
     "200 rounds, squared-error loss",
     "RMSE, depth 5, lr 0.05, 100 iterations",
@@ -117,9 +117,9 @@ notes <- data.frame(
     "use_lasso = TRUE (default)",
     "lambda_lasso = \"lambda.min\" (default)",
     "n_folds = 5 (default)",
-    "vote_threshold = 2 (spec default); use 3 for the paper",
+    "vote_threshold = 2 (default)",
     "boruta_pvalue = 0.01 (default)",
-    "boruta_max_runs = 200 (spec default); use 100 for the paper",
+    "boruta_max_runs = 200 (default)",
     "getImpLightGBM uses those hyperparameters",
     "getImpXgboost with nrounds = 200",
     "getImpCatBoost uses those hyperparameters",
@@ -143,9 +143,9 @@ result_paper <- ml_cov_search(
   boruta_algorithm = "lightgbm",
   boruta_pvalue = 0.01,
   n_folds = 5,
-  vote_threshold = 3,
+  vote_threshold = 2,
   log_ebes = TRUE,
-  boruta_max_runs = 100,
+  boruta_max_runs = 200,
   seed = 123
 )
 ```
@@ -165,29 +165,11 @@ result <- ml_cov_search(
 )
 print(result)
 result$result_ML
-result$result_5folds
+result$result_folds
 result$settings
 ```
 
-## Manuscript settings (majority vote, 100 Boruta runs)
-
-```{r paper-search, eval = run_live}
-result_paper <- ml_cov_search(
-  data,
-  pop_param = pop_param,
-  cov_continuous = cov_continuous,
-  cov_factors = cov_factors,
-  use_lasso = TRUE,
-  lambda_lasso = "lambda.min",
-  boruta_algorithm = "lightgbm",
-  boruta_pvalue = 0.01,
-  n_folds = 5,
-  vote_threshold = 3,
-  log_ebes = TRUE,
-  boruta_max_runs = 100
-)
-print(result_paper)
-```
+The default search above is the final manuscript setting (`vote_threshold = 2`, `boruta_max_runs = 200`, Lasso `lambda.min`, LightGBM).
 
 ## Contrast λ.1se and no Lasso
 
@@ -234,7 +216,7 @@ result_xgb <- ml_cov_search(
 
 ## Other learners
 
-Random forest is supported but not recommended (high Type I error in the paper). CatBoost runs only if the optional `catboost` package is installed.
+Random forest is supported but not recommended (high Type I error in the paper). It requires the suggested `ranger` package. CatBoost runs only if the optional `catboost` package is installed.
 
 ```{r rf, eval = FALSE}
 result_rf <- ml_cov_search(
@@ -315,9 +297,9 @@ ml_cov_search(
   use_lasso = TRUE,              # or FALSE
   lambda_lasso = "lambda.min",   # or "lambda.1se"
   n_folds = 5,
-  vote_threshold = 3,            # manuscript majority; spec default is 2
+  vote_threshold = 2,            # final study: at least two folds
   boruta_pvalue = 0.01,
-  boruta_max_runs = 100,         # manuscript; spec default is 200
+  boruta_max_runs = 200,         # final study
   log_ebes = TRUE,
   seed = 123
 )

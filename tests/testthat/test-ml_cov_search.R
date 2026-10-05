@@ -48,7 +48,7 @@ describe("ml_cov_search argument validation", {
         use_lasso = FALSE,
         n_folds = 2,
         vote_threshold = 1,
-        boruta_algorithm = "randomForest",
+        boruta_algorithm = "lightgbm",
         boruta_max_runs = 11
       ),
       "not unique within ID"
@@ -98,13 +98,44 @@ describe("ml_cov_search argument validation", {
           cov_continuous = "WT",
           n_folds = 2,
           vote_threshold = 1,
-          boruta_algorithm = "randomForest",
+          boruta_algorithm = "lightgbm",
           use_lasso = FALSE,
           log_ebes = TRUE
         ),
         .package = "mlcov"
       ),
       "strictly positive"
+    )
+  })
+
+  it("errors when ranger is not installed for random forest", {
+    dat <- synthetic_mlcov_data()
+    # requireNamespace() is inherited from base, so the package needs a
+    # binding before with_mocked_bindings() can replace it.
+    imports <- parent.env(asNamespace("mlcov"))
+    if (!exists("requireNamespace", envir = imports, inherits = FALSE)) {
+      assign("requireNamespace", base::requireNamespace, envir = imports)
+      withr::defer(rm("requireNamespace", envir = imports))
+    }
+    expect_error(
+      with_mocked_bindings(
+        requireNamespace = function(pkg, ...) {
+          if (identical(pkg, "ranger")) {
+            FALSE
+          } else {
+            base::requireNamespace(pkg, ...)
+          }
+        },
+        ml_cov_search(
+          dat,
+          pop_param = "CL",
+          cov_continuous = "WT",
+          boruta_algorithm = "randomForest",
+          use_lasso = FALSE
+        ),
+        .package = "mlcov"
+      ),
+      "ranger"
     )
   })
 

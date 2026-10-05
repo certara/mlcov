@@ -23,8 +23,9 @@ The workflow in `mlcov` has four steps:
     leftover residual trends.
 
 The recommended default matches the v2 evaluation study: Lasso with
-`lambda.min` plus Boruta-LightGBM. Random forest remains available but
-had high Type I error in that study and is not the recommended default.
+`lambda.min` plus Boruta-LightGBM. Random forest remains available
+(`install.packages("ranger")`) but had high Type I error in that study
+and is not the recommended default.
 
 A worked argument reference, manuscript-faithful settings, and
 diagnostic examples are in the vignette

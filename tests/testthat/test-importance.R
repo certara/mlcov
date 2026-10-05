@@ -2,6 +2,7 @@ describe("importance adapters", {
   it("resolves a getImp function for each supported algorithm", {
     rf <- boruta_importance_spec("randomForest")
     expect_type(rf$get_imp, "closure")
+    expect_identical(rf$get_imp, getImpRanger)
     xgb <- boruta_importance_spec("xgboost")
     expect_identical(xgb$extra$objective, "reg:squarederror")
     lgb <- boruta_importance_spec("lightgbm")
@@ -46,7 +47,7 @@ describe("importance adapters", {
     y <- x[[1]] + rnorm(40, sd = 0.1)
     imp <- getImpLightGBM(x, y)
     expect_equal(length(imp), 2)
-    expect_equal(names(imp), names(x))
+    expect_equal(names(imp), make.names(names(x), unique = TRUE))
     expect_true(is.finite(imp[[1]]))
   })
 })

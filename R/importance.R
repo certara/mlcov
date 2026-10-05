@@ -37,49 +37,45 @@ comment(getImpXgboost) <- "xgboost gain importance"
 
 #' LightGBM gain importance for Boruta
 #'
-#' Hyperparameters match the v2 manuscript: regression objective, RMSE metric,
+#' Matches the simulation-study adapter: column names are passed through
+#' [make.names()], factor columns are supplied to LightGBM by name, and the
+#' predictor frame is [as.matrix()]. Factors are not integer-coded. On
+#' lightgbm 4.x that matrix is coerced to double, which is the encoding the
+#' published Boruta selections used.
+#'
+#' Hyperparameters match the study: regression objective, RMSE metric,
 #' learning rate 0.1, 31 leaves, 200 boosting iterations.
 #'
 #' @param x Data frame of predictors, including Boruta shadow features.
 #' @param y Response vector.
 #' @param ... Ignored; accepted for Boruta compatibility.
-#' @return Named numeric vector of gain importance, one value per column of `x`.
+#' @return Named numeric vector of gain importance. Names are [make.names()]
+#'   versions of `colnames(x)`.
 #' @keywords internal
 #' @noRd
 getImpLightGBM <- function(x, y, ...) {
-  x <- as.data.frame(x, optional = TRUE, stringsAsFactors = FALSE)
-  orig_names <- colnames(x)
-  if (is.null(orig_names) || length(orig_names) != ncol(x)) {
-    orig_names <- paste0("V", seq_len(ncol(x)))
-  }
-  is_cat <- vapply(x, is.factor, logical(1))
+  # make.names() also keeps LightGBM from rejecting Boruta's one-column
+  # label `x[, decReg != "Rejected"]`.
+  colnames(x) <- make.names(colnames(x), unique = TRUE)
 
-  mat <- vapply(
-    seq_along(x),
-    function(j) {
-      col <- x[[j]]
-      if (is_cat[[j]]) {
-        as.numeric(as.integer(col) - 1L)
-      } else {
-        as.numeric(col)
+  categorical_features <- names(x)[vapply(x, is.factor, logical(1))]
+  if (length(categorical_features) > 0) {
+    x[categorical_features] <- lapply(x[categorical_features], as.factor)
+  }
+
+  # lightgbm 4.x coerces as.matrix() output to double and warns when factor
+  # labels are not numeric. That coercion is the simulation-study encoding.
+  dtrain <- withCallingHandlers(
+    lightgbm::lgb.Dataset(
+      data = as.matrix(x),
+      label = y,
+      categorical_feature = categorical_features
+    ),
+    warning = function(w) {
+      if (grepl("NAs introduced by coercion", conditionMessage(w), fixed = TRUE)) {
+        invokeRestart("muffleWarning")
       }
-    },
-    numeric(nrow(x))
-  )
-  if (is.null(dim(mat))) {
-    mat <- matrix(mat, ncol = 1L)
-  }
-  # LightGBM rejects JSON-special characters in names. Boruta's single-column
-  # cbind() labels that column `x[, decReg != "Rejected"]`, which contains
-  # `[`, `]`, `,`, and `"`. Use positional names internally and map back.
-  safe_names <- paste0("f", seq_len(ncol(mat)))
-  colnames(mat) <- safe_names
-  cat_idx <- as.integer(which(is_cat) - 1L)
-
-  dtrain <- lightgbm::lgb.Dataset(
-    data = mat,
-    label = as.numeric(y),
-    categorical_feature = if (length(cat_idx) > 0L) cat_idx else NULL
+    }
   )
 
   params <- list(
@@ -87,25 +83,21 @@ getImpLightGBM <- function(x, y, ...) {
     metric = "rmse",
     boosting = "gbdt",
     learning_rate = 0.1,
-    num_leaves = 31L,
-    verbosity = -1L
+    num_leaves = 31,
+    verbosity = -1
   )
 
   model <- lightgbm::lgb.train(
     params = params,
     data = dtrain,
-    nrounds = 200L
+    nrounds = 200
   )
 
   importance <- lightgbm::lgb.importance(model)
-  importance_vector <- stats::setNames(rep(0, ncol(mat)), orig_names)
+  importance_vector <- stats::setNames(rep(0, ncol(x)), colnames(x))
 
   if (!is.null(importance) && nrow(importance) > 0) {
-    feat <- as.character(importance$Feature)
-    gain <- importance$Gain
-    mapped <- match(feat, safe_names)
-    ok <- !is.na(mapped)
-    importance_vector[mapped[ok]] <- gain[ok]
+    importance_vector[importance$Feature] <- importance$Gain
   }
 
   importance_vector
@@ -166,6 +158,42 @@ getImpCatBoost <- function(x, y, ...) {
 }
 comment(getImpCatBoost) <- "catboost feature importance"
 
+#' Stop when the random-forest learner cannot run
+#'
+#' [Boruta::getImpRfZ()] fits with [ranger::ranger()]. `ranger` is suggested,
+#' not imported, because random forest is not the default learner.
+#'
+#' @return `TRUE`, invisibly, when `ranger` is installed.
+#' @keywords internal
+#' @noRd
+ensure_ranger <- function() {
+  if (!requireNamespace("ranger", quietly = TRUE)) {
+    stop(
+      "The 'ranger' package is required for boruta_algorithm = \"randomForest\". ",
+      "Install it with install.packages(\"ranger\").",
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
+}
+
+#' Ranger permutation importance for Boruta
+#'
+#' Thin wrapper around [Boruta::getImpRfZ()] that fails with an install hint
+#' when `ranger` is missing.
+#'
+#' @param x Data frame of predictors, including Boruta shadow features.
+#' @param y Response vector.
+#' @param ... Passed to [Boruta::getImpRfZ()].
+#' @return Named numeric vector of permutation importance.
+#' @keywords internal
+#' @noRd
+getImpRanger <- function(x, y, ...) {
+  ensure_ranger()
+  Boruta::getImpRfZ(x, y, ...)
+}
+comment(getImpRanger) <- comment(Boruta::getImpRfZ)
+
 #' Resolve the Boruta importance function and extra arguments for a learner
 #'
 #' @param boruta_algorithm One of `"randomForest"`, `"xgboost"`, `"lightgbm"`,
@@ -176,7 +204,7 @@ comment(getImpCatBoost) <- "catboost feature importance"
 boruta_importance_spec <- function(boruta_algorithm) {
   switch(
     boruta_algorithm,
-    randomForest = list(get_imp = Boruta::getImpRfZ, extra = list()),
+    randomForest = list(get_imp = getImpRanger, extra = list()),
     xgboost = list(
       get_imp = getImpXgboost,
       extra = list(nrounds = 200, objective = "reg:squarederror")
@@ -201,13 +229,6 @@ boruta_importance_spec <- function(boruta_algorithm) {
 #' @keywords internal
 #' @noRd
 run_boruta <- function(x, y, pValue, maxRuns, get_imp, extra) {
-  get_imp_positional <- function(x_imp, y_imp, ...) {
-    x_imp <- as.data.frame(x_imp, optional = TRUE, stringsAsFactors = FALSE)
-    colnames(x_imp) <- paste0("f", seq_len(ncol(x_imp)))
-    get_imp(x_imp, y_imp, ...)
-  }
-  comment(get_imp_positional) <- comment(get_imp)
-
   boruta_obj <- do.call(
     Boruta::Boruta,
     c(
@@ -217,7 +238,7 @@ run_boruta <- function(x, y, pValue, maxRuns, get_imp, extra) {
         pValue = pValue,
         maxRuns = maxRuns,
         doTrace = 0,
-        getImp = get_imp_positional
+        getImp = get_imp
       ),
       extra
     )

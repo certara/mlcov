@@ -26,7 +26,7 @@ The workflow in `mlcov` has four steps:
 
 4. **Diagnostics (optional).** `generate_shap_summary_plot()` explains the selected set with XGBoost SHAP values. `generate_residuals_plot()` checks unselected covariates for leftover residual trends.
 
-The recommended default matches the v2 evaluation study: Lasso with `lambda.min` plus Boruta-LightGBM. Random forest remains available but had high Type I error in that study and is not the recommended default.
+The recommended default matches the v2 evaluation study: Lasso with `lambda.min` plus Boruta-LightGBM. Random forest remains available (`install.packages("ranger")`) but had high Type I error in that study and is not the recommended default.
 
 A worked argument reference, manuscript-faithful settings, and diagnostic examples are in the vignette `vignette("mlcov-updated-usage", package = "mlcov")`.
 
