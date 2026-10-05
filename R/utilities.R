@@ -87,6 +87,30 @@ data_validation <- function(data, pop_param, cov_continuous, cov_factors) {
     }
   }
 
+  overlap_param <- intersect(
+    as.character(pop_param),
+    c(as.character(cov_continuous), as.character(cov_factors))
+  )
+  if (length(overlap_param) > 0) {
+    errors <- c(
+      errors,
+      paste(
+        "`pop_param` and covariates must name different columns. Overlap:",
+        toString(overlap_param)
+      )
+    )
+  }
+  overlap_type <- intersect(as.character(cov_continuous), as.character(cov_factors))
+  if (length(overlap_type) > 0) {
+    errors <- c(
+      errors,
+      paste(
+        "Covariates cannot be listed as both continuous and categorical:",
+        toString(overlap_type)
+      )
+    )
+  }
+
   if (length(errors) > 0) {
     stop(paste(errors, collapse = "\n"), call. = FALSE)
   }
@@ -432,6 +456,17 @@ mlcov_settings <- function(result) {
   }
   if (is.null(s$boruta_algorithm)) {
     s$boruta_algorithm <- "xgboost"
+  }
+  # 0.0.2 searches used Lasso lambda.1se, XGBoost, and a vote of 2, and
+  # did not store a settings list.
+  if (is.null(s$use_lasso)) {
+    s$use_lasso <- TRUE
+  }
+  if (is.null(s$lambda_lasso)) {
+    s$lambda_lasso <- "lambda.1se"
+  }
+  if (is.null(s$vote_threshold)) {
+    s$vote_threshold <- 2L
   }
   s
 }

@@ -126,6 +126,91 @@ describe("ml_cov_search argument validation", {
     )
   })
 
+  it("errors when a parameter is also listed as a covariate", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = c("CL", "WT")
+      ),
+      "Overlap"
+    )
+  })
+
+  it("errors when a covariate is listed as both continuous and categorical", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "SEX",
+        cov_factors = "SEX"
+      ),
+      "both continuous and categorical"
+    )
+  })
+
+  it("errors when fold arguments are not finite whole numbers", {
+    dat <- synthetic_mlcov_data()
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        n_folds = 2.9,
+        use_lasso = FALSE
+      ),
+      "n_folds"
+    )
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        n_folds = Inf,
+        use_lasso = FALSE
+      ),
+      "n_folds"
+    )
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        vote_threshold = 1.5,
+        use_lasso = FALSE
+      ),
+      "vote_threshold"
+    )
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        boruta_max_runs = 10.2,
+        use_lasso = FALSE
+      ),
+      "boruta_max_runs"
+    )
+  })
+
+  it("errors when n_folds exceeds the number of unique subjects", {
+    dat <- synthetic_mlcov_data(n = 3)
+    expect_error(
+      ml_cov_search(
+        dat,
+        pop_param = "CL",
+        cov_continuous = "WT",
+        n_folds = 4,
+        vote_threshold = 1,
+        use_lasso = FALSE,
+        boruta_algorithm = "lightgbm"
+      ),
+      "unique subjects"
+    )
+  })
+
   it("errors for an unknown boruta_algorithm", {
     dat <- synthetic_mlcov_data()
     expect_error(

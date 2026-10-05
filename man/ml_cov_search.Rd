@@ -52,7 +52,8 @@ requires the suggested `ranger` package. CatBoost requires the optional
 Defaults to 0.01.}
 
 \item{n_folds}{Number of outer cross-validation folds (caret 80/20
-train/test splits). Defaults to 5. Lasso uses [glmnet::cv.glmnet()]'s
+train/test splits). Defaults to 5. Must be a whole number from 2 through
+the number of unique subjects. Lasso uses [glmnet::cv.glmnet()]'s
 default of 10 folds and does not follow `n_folds`.}
 
 \item{vote_threshold}{Minimum number of folds in which a covariate must be

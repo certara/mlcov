@@ -36,7 +36,8 @@
 #' @param boruta_pvalue Significance level passed to [Boruta::Boruta()].
 #'   Defaults to 0.01.
 #' @param n_folds Number of outer cross-validation folds (caret 80/20
-#'   train/test splits). Defaults to 5. Lasso uses [glmnet::cv.glmnet()]'s
+#'   train/test splits). Defaults to 5. Must be a whole number from 2 through
+#'   the number of unique subjects. Lasso uses [glmnet::cv.glmnet()]'s
 #'   default of 10 folds and does not follow `n_folds`.
 #' @param vote_threshold Minimum number of folds in which a covariate must be
 #'   confirmed to be retained (`Freq >= vote_threshold`). Defaults to 2,
@@ -124,6 +125,13 @@ ml_cov_search <- function(data,
   use_matrix <- identical(boruta_algorithm, "xgboost")
 
   data <- col_select(data, pop_param, cov_continuous, cov_factors)
+  if (n_folds > nrow(data)) {
+    stop(
+      "`n_folds` (", n_folds, ") cannot exceed the number of unique subjects (",
+      nrow(data), ").",
+      call. = FALSE
+    )
+  }
   pop_parameters <- data %>% dplyr::select(dplyr::all_of(pop_param))
   factors <- if (length(cov_factors) > 0) {
     data %>% dplyr::select(dplyr::all_of(cov_factors))
@@ -247,6 +255,26 @@ ml_cov_search <- function(data,
   )
 }
 
+#' Require a single finite whole number
+#'
+#' @param x Value to check.
+#' @param arg Argument name used in the error message.
+#' @param minimum Smallest allowed value.
+#' @return Invisibly `TRUE` when `x` is valid.
+#' @keywords internal
+#' @noRd
+assert_whole_number <- function(x, arg, minimum) {
+  ok <- length(x) == 1L && is.numeric(x) && is.finite(x) &&
+    x == trunc(x) && x >= minimum
+  if (!isTRUE(ok)) {
+    stop(
+      "`", arg, "` must be a whole number >= ", minimum, ".",
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
+}
+
 #' Validate scalar arguments for [ml_cov_search()]
 #'
 #' @keywords internal
@@ -272,21 +300,12 @@ validate_ml_cov_search_args <- function(seed,
       !is.finite(boruta_pvalue) || boruta_pvalue <= 0 || boruta_pvalue >= 1) {
     stop("`boruta_pvalue` must be a single number in (0, 1).", call. = FALSE)
   }
-  if (!is.numeric(n_folds) || length(n_folds) != 1L ||
-      is.na(n_folds) || n_folds < 2) {
-    stop("`n_folds` must be an integer >= 2.", call. = FALSE)
-  }
-  if (!is.numeric(vote_threshold) || length(vote_threshold) != 1L ||
-      is.na(vote_threshold) || vote_threshold < 1) {
-    stop("`vote_threshold` must be an integer >= 1.", call. = FALSE)
-  }
-  if (as.integer(vote_threshold) > as.integer(n_folds)) {
+  assert_whole_number(n_folds, "n_folds", minimum = 2)
+  assert_whole_number(vote_threshold, "vote_threshold", minimum = 1)
+  if (vote_threshold > n_folds) {
     stop("`vote_threshold` cannot exceed `n_folds`.", call. = FALSE)
   }
-  if (!is.numeric(boruta_max_runs) || length(boruta_max_runs) != 1L ||
-      is.na(boruta_max_runs) || boruta_max_runs < 2) {
-    stop("`boruta_max_runs` must be an integer >= 2.", call. = FALSE)
-  }
+  assert_whole_number(boruta_max_runs, "boruta_max_runs", minimum = 2)
 
   if (identical(boruta_algorithm, "lightgbm") &&
       !requireNamespace("lightgbm", quietly = TRUE)) {

@@ -161,4 +161,16 @@ describe("legacy fold results", {
     expect_equal(mlcov_settings(result)$n_folds, 4L)
     expect_identical(fold_results(result), result$result_5folds)
   })
+
+  it("fills 0.0.2 Lasso and vote defaults when settings are absent", {
+    result <- stub_mlcov_result()
+    result$settings <- NULL
+    s <- mlcov_settings(result)
+    expect_true(s$use_lasso)
+    expect_equal(s$lambda_lasso, "lambda.1se")
+    expect_equal(s$vote_threshold, 2L)
+    expect_equal(s$boruta_algorithm, "xgboost")
+    expect_true(s$log_ebes)
+    expect_equal(s$n_folds, 5L)
+  })
 })

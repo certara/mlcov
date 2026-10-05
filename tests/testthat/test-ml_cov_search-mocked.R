@@ -84,4 +84,14 @@ describe("print.mlcov_data", {
     expect_match(output, "lambda.min")
     expect_match(output, "WT")
   })
+
+  it("prints 0.0.2 Lasso defaults when settings were not stored", {
+    result <- stub_mlcov_result()
+    result$settings <- NULL
+    output <- paste(capture.output(print(result)), collapse = "\n")
+    expect_match(output, "xgboost")
+    expect_match(output, "lambda.1se")
+    expect_match(output, "Lasso:\\s+yes")
+    expect_match(output, "5 / 2")
+  })
 })

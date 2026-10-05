@@ -29,6 +29,11 @@
   objects saved by earlier versions.
 * Vote tallying ignores empty / `NA` fold cells so they cannot appear as a
   covariate named `"NA"`.
+* `n_folds`, `vote_threshold`, and `boruta_max_runs` must be finite whole
+  numbers. `n_folds` cannot exceed the number of unique subjects. A column
+  cannot be both a parameter and a covariate, or both continuous and categorical.
+* Objects saved by 0.0.2, which have no `settings` list, print as Lasso
+  `lambda.1se`, XGBoost, and a vote threshold of 2.
 * `caret` moved out of `Depends`. `lightgbm` is an Import (default learner).
   Random forest uses Boruta's ranger importance (`Suggests: ranger`) and
   stops with an install hint when `ranger` is missing.
