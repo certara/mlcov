@@ -158,6 +158,18 @@ getImpCatBoost <- function(x, y, ...) {
 }
 comment(getImpCatBoost) <- "catboost feature importance"
 
+#' Whether the suggested ranger package can be loaded
+#'
+#' Kept separate from [ensure_ranger()] so tests can replace this binding.
+#' `requireNamespace()` itself lives in the locked imports environment.
+#'
+#' @return `TRUE` when `ranger` is installed.
+#' @keywords internal
+#' @noRd
+ranger_is_installed <- function() {
+  requireNamespace("ranger", quietly = TRUE)
+}
+
 #' Stop when the random-forest learner cannot run
 #'
 #' [Boruta::getImpRfZ()] fits with [ranger::ranger()]. `ranger` is suggested,
@@ -167,7 +179,7 @@ comment(getImpCatBoost) <- "catboost feature importance"
 #' @keywords internal
 #' @noRd
 ensure_ranger <- function() {
-  if (!requireNamespace("ranger", quietly = TRUE)) {
+  if (!ranger_is_installed()) {
     stop(
       "The 'ranger' package is required for boruta_algorithm = \"randomForest\". ",
       "Install it with install.packages(\"ranger\").",

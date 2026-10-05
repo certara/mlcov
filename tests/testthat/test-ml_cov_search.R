@@ -110,22 +110,9 @@ describe("ml_cov_search argument validation", {
 
   it("errors when ranger is not installed for random forest", {
     dat <- synthetic_mlcov_data()
-    # requireNamespace() is inherited from base, so the package needs a
-    # binding before with_mocked_bindings() can replace it.
-    imports <- parent.env(asNamespace("mlcov"))
-    if (!exists("requireNamespace", envir = imports, inherits = FALSE)) {
-      assign("requireNamespace", base::requireNamespace, envir = imports)
-      withr::defer(rm("requireNamespace", envir = imports))
-    }
     expect_error(
       with_mocked_bindings(
-        requireNamespace = function(pkg, ...) {
-          if (identical(pkg, "ranger")) {
-            FALSE
-          } else {
-            base::requireNamespace(pkg, ...)
-          }
-        },
+        ranger_is_installed = function() FALSE,
         ml_cov_search(
           dat,
           pop_param = "CL",
