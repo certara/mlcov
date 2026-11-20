@@ -2,9 +2,10 @@
 % Please edit documentation in R/generate_shap_summary_plot.R
 \name{generate_shap_summary_plot}
 \alias{generate_shap_summary_plot}
-\title{Generate SHAP Summary Plots}
+\title{Generate SHAP summary plots for selected covariates}
 \usage{
 generate_shap_summary_plot(
+  result,
   data,
   x_bound = NULL,
   dilute = FALSE,
@@ -20,51 +21,55 @@ generate_shap_summary_plot(
 )
 }
 \arguments{
-\item{data}{A list containing required data frames and results.}
+\item{result}{An `mlcov_data` object from [ml_cov_search()].}
 
-\item{x_bound}{use to set horizontal axis limit in the plot}
+\item{data}{The original data frame passed to [ml_cov_search()] (must
+contain `ID`, the population parameters, and the covariates).}
 
-\item{dilute}{being numeric or logical (TRUE/FALSE), it aims to help make the test
-plot for large amount of data faster. If dilute = 5 will plot 1/5 of the
-data. If dilute = TRUE or a number, will plot at most half points per
-feature, so the plotting won't be too slow. If you put dilute too high, at
-least 10 points per feature would be kept. If the dataset is too small
-after dilution, will just plot all the data}
+\item{x_bound}{Optional x-axis limits `c(min, max)`.}
 
-\item{scientific}{show the mean|SHAP| in scientific format. If TRUE, label
-format is 0.0E-0, default to FALSE, and the format will be 0.000}
+\item{dilute}{Unused; retained for compatibility with earlier signatures.}
 
-\item{my_format}{supply your own number format if you really want}
+\item{scientific}{Unused; retained for compatibility with earlier signatures.}
 
-\item{min_color_bound}{min color hex code for colormap. Color gradient is
-scaled between min_color_bound and max_color_bound. Default is "#FFCC33".}
+\item{my_format}{Unused; retained for compatibility with earlier signatures.}
 
-\item{max_color_bound}{max color hex code for colormap. Color gradient is
-scaled between min_color_bound and max_color_bound. Default is "#6600CC".}
+\item{min_color_bound}{Low end of the feature-value colour scale.}
 
-\item{kind}{By default, a "sina" plot is shown. As an alternative,
-set \code{kind = "bar"} to visualize mean absolute SHAP values as a
-barplot. Its color is controlled by \code{max_color_bound}. Other
-arguments are ignored for this kind of plot.}
+\item{max_color_bound}{High end of the feature-value colour scale.}
 
-\item{title}{A character string to customize the title}
+\item{kind}{Retained for compatibility. Only the xgboost SHAP summary
+(or a single-feature scatter) is produced. `"bar"` is accepted but
+ignored with a warning.}
 
-\item{title.position}{A numeric value from 0.0-1.0 to adjust the alignment of the title}
+\item{title}{A character string used as the plot title. If `NULL`, the
+population parameter name is used.}
 
-\item{ylab}{A character string to customize the y-axis}
+\item{title.position}{Horizontal title alignment in `[0, 1]`.}
 
-\item{xlab}{A character string to customize the x-axis}
+\item{ylab}{Y-axis label.}
+
+\item{xlab}{X-axis label.}
 }
 \value{
-A list of ggplot objects, each representing a SHAP summary plot for a different parameter.
+A named list of ggplot objects, one per parameter with at least
+  one selected covariate. Parameters with no selection are omitted.
 }
 \description{
-This function generates SHAP summary plots for the XGBoost model.
+Trains an XGBoost interpreter on the covariates voted by
+[ml_cov_search()] and draws SHAP summary plots. SHAP is an XGBoost-based
+explanation of the selected set and does not depend on the Boruta learner
+used during search.
+}
+\details{
+Plots are built with [xgboost::xgb.ggplot.shap.summary()] when two or more
+covariates are selected, and with a single-feature SHAP scatter when only
+one covariate is selected. This path is compatible with xgboost 3.x
+(`xgb.train` boosters).
 }
 \examples{
-# Assuming 'data' is a list with necessary components
 \dontrun{
-plots <- generate_shap_summary_plot(data, title = "Custom Title", y.inter = 0.25, ...)
+plots <- generate_shap_summary_plot(result, data)
 }
 
 }

@@ -38,7 +38,8 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: rcmdcheck
+          extra-packages: any::rcmdcheck, any::testthat, any::knitr, any::rmarkdown
+          dependencies: '"hard"'
 
       - uses: r-lib/actions/check-r-package@v2
         with:

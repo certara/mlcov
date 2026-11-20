@@ -1,37 +1,72 @@
 
 # mlcov
 
-R package for selection of covariate effects using ML.
+`mlcov` is an R package for machine-learning-based covariate selection
+in population pharmacokinetic and pharmacodynamic analyses. The package
+evaluates associations between empirical Bayes estimates (EBEs) and
+candidate covariates using optional Lasso pre-selection followed by the
+Boruta algorithm.
 
-The methodology implemented in the `mlcov` R package consists of 4 key
-steps:
+## How the package works
 
-1.) The dataset, comprised of empirical Bayesian estimates of individual
-parameters (EBEs) and covariate sets, is randomly split into five folds
-(step 1, data splitting).
+The complete covariate-selection workflow is performed automatically by
+`ml_cov_search()`. The user provides the dataset, the population
+parameters to analyze, the continuous and categorical covariates, and
+any settings that differ from the defaults. Lasso, Boruta, the repeated
+fold analyses, and the final voting procedure are all run internally by
+the function.
 
-2.) The covariate selection (step 2) is performed by applying the Lasso
-algorithm to reduce irrelevant or redundant covariates due to
-correlation followed by the Boruta algorithm to iteratively identify
-relevant covariates based on their importance scores.
+For each population parameter, `ml_cov_search()` automatically performs
+the following steps:
 
-3.) A voting mechanism (step 3) across folds determines the final
-selected covariates based on their robustness. Note that these first
-three steps are implemented by a simple call to the function
-`ml_cov_search`.
+1.  **Data preparation**
 
-4.) Finally, residual plots (step 4) are employed to evaluate the
-covariate-parameter relationships.Following the covariate selection
-using the proposed ML method, an XGboost model is trained on the
-selected covariates and the remaining trends between residuals
-(difference between the actual target values and the model’s predicted
-values) and unselected covariates are examined. The primary goal is to
-ensure that the ML method did not overlook any significant trends or
-relationships that could be captured by additional covariates. This step
-is implemented in a separate function `generate_residual_plots`.
+    The function selects the subject identifier, EBEs, and candidate
+    covariates. It retains one unique set of values per subject,
+    converts categorical covariates to factors, and log-transforms the
+    EBEs when `log_ebes = TRUE`.
 
-Visit the [PAGE Abstract](https://www.page-meeting.org/?abstract=10996)
-to learn more.
+2.  **Outer data splitting**
+
+    Subjects are randomly divided into `n_folds` folds. At each
+    iteration, one fold is held out and the remaining folds are used as
+    the training dataset for covariate selection. By default, five outer
+    folds are used.
+
+3.  **Optional Lasso pre-selection**
+
+    When `use_lasso = TRUE`, Lasso is applied within each training
+    dataset to reduce the number of candidate covariates before Boruta.
+    The penalty can be selected using either `lambda.min` or
+    `lambda.1se`. The internal cross-validation of `glmnet::cv.glmnet()`
+    uses its own default settings.
+
+4.  **Boruta covariate selection**
+
+    Boruta is applied to the covariates retained after the optional
+    Lasso step. Feature importance is calculated using the learner
+    specified in `boruta_algorithm`. The available learners are:
+
+    - LightGBM (default);
+    - random forest, which requires the suggested `ranger` package;
+    - XGBoost;
+    - CatBoost, which is optional and is not on CRAN.
+
+5.  **Fold-wise voting**
+
+    Once all folds have been analyzed, the function counts how many
+    times each covariate was confirmed by Boruta. A covariate is
+    included in the final selection when it is confirmed in at least
+    `vote_threshold` folds. The default threshold is two folds.
+
+All these operations are executed through a single call to
+`ml_cov_search()`. The user does not need to run Lasso, Boruta, or the
+voting step separately. Each Boruta learner can also be used without
+Lasso by setting `use_lasso = FALSE`.
+
+The recommended default matches the evaluation study: Lasso with
+`lambda.min` plus Boruta-LightGBM. Random forest had a high Type I error
+in that study and is not the recommended default.
 
 ## Installation
 
@@ -43,164 +78,143 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 remotes::install_github("certara/mlcov")
 ```
 
-# Usage
-
-Import data file:
-
 ``` r
 library(mlcov)
+```
 
+Random forest requires `ranger` (`install.packages("ranger")`). CatBoost
+is optional and must be installed separately when using
+`boruta_algorithm = "catboost"`; see the [CatBoost R installation
+notes](https://catboost.ai/en/docs/installation/r-installation).
+
+## Example dataset
+
+The package contains the `tab33` dataset, which can be used to test the
+workflow:
+
+``` r
 data_file <- system.file(package = "mlcov", "supplementary", "tab33")
 data <- read.table(data_file, skip = 1, header = TRUE)
 ```
 
-Perform covariate search:
+The dataset contains subject identifiers, population parameter
+estimates, and candidate continuous and categorical covariates.
+
+## Basic example
+
+The following call runs the complete workflow using the package
+defaults:
 
 ``` r
 result <- ml_cov_search(
   data = data,
-  pop_param = c("V1","CL"),
-  cov_continuous = c("AGE","WT","HT","BMI","ALB","CRT",
-                    "FER","CHOL","WBC","LYPCT","RBC",
-                    "HGB","HCT","PLT"),
-  cov_factors = c("SEX","RACE","DIAB","ALQ","WACT","SMQ")
+  pop_param = c("V1", "CL"),
+  cov_continuous = c(
+    "AGE", "WT", "HT", "BMI", "ALB", "CRT", "FER",
+    "CHOL", "WBC", "LYPCT", "RBC", "HGB", "HCT", "PLT"
+  ),
+  cov_factors = c("SEX", "RACE", "DIAB", "ALQ", "WACT", "SMQ")
 )
-```
 
-    ## Searching covariate effects on V1
-
-    ## Searching covariate effects on CL
-
-``` r
 print(result)
 ```
 
-    ## 
-    ## Population Parameter:    V1 
-    ## --------------------------
-    ## Covariates Selected: SEX 
-    ## 
-    ## Population Parameter:    CL 
-    ## --------------------------
-    ## Covariates Selected: AGE
+This single call automatically applies Lasso, runs Boruta-LightGBM
+within each of the five outer folds, and retains covariates confirmed in
+at least two folds.
 
-Generate SHAP plots:
+## Default settings
 
 ``` r
-generate_shap_summary_plot(
-  result,
-  x_bound = NULL,
-  dilute = FALSE,
-  scientific = FALSE,
-  my_format = NULL,
-  title = NULL,
-  title.position = 0.5,
-  ylab = NULL,
-  xlab = NULL
+seed             = 123
+use_lasso        = TRUE
+lambda_lasso     = "lambda.min"
+boruta_algorithm = "lightgbm"
+boruta_pvalue    = 0.01
+n_folds          = 5
+vote_threshold   = 2
+log_ebes         = TRUE
+boruta_max_runs  = 200
+```
+
+These settings can be changed directly in the `ml_cov_search()` call.
+
+For example, LightGBM can be run without Lasso as follows:
+
+``` r
+result_without_lasso <- ml_cov_search(
+  data = data,
+  pop_param = c("V1", "CL"),
+  cov_continuous = c(
+    "AGE", "WT", "HT", "BMI", "ALB", "CRT", "FER",
+    "CHOL", "WBC", "LYPCT", "RBC", "HGB", "HCT", "PLT"
+  ),
+  cov_factors = c("SEX", "RACE", "DIAB", "ALQ", "WACT", "SMQ"),
+  use_lasso = FALSE,
+  boruta_algorithm = "lightgbm"
 )
 ```
 
-    ## $V1
+## Main arguments
 
-![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+| Argument | Description | Default |
+|----|----|---:|
+| `data` | Dataset containing `ID`, EBEs, and candidate covariates | Required |
+| `pop_param` | Names of the population parameters to analyze | Required |
+| `cov_continuous` | Names of continuous covariates | Optional |
+| `cov_factors` | Names of categorical covariates | Optional |
+| `seed` | Random seed | `123` |
+| `use_lasso` | Apply Lasso before Boruta | `TRUE` |
+| `lambda_lasso` | Lasso penalty: `lambda.min` or `lambda.1se` | `lambda.min` |
+| `boruta_algorithm` | Importance learner used by Boruta | `lightgbm` |
+| `boruta_pvalue` | Significance level used by Boruta | `0.01` |
+| `n_folds` | Number of outer folds | `5` |
+| `vote_threshold` | Minimum number of folds confirming a covariate | `2` |
+| `log_ebes` | Log-transform the EBEs | `TRUE` |
+| `boruta_max_runs` | Maximum number of Boruta iterations | `200` |
 
-    ## 
-    ## $CL
+## Output
 
-![](README_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
+`ml_cov_search()` returns an object of class `mlcov_data` containing:
 
-Generate residual plots:
-
-``` r
-generate_residuals_plot(data = data, result, pop_param = 'CL')
-```
-
-    ## Testing pvalue significance for WT
-
-    ## Testing pvalue significance for HT
-
-    ## Testing pvalue significance for BMI
-
-    ## Testing pvalue significance for ALB
-
-    ## Testing pvalue significance for CRT
-
-    ## Testing pvalue significance for FER
-
-    ## Testing pvalue significance for CHOL
-
-    ## Testing pvalue significance for WBC
-
-    ## Testing pvalue significance for LYPCT
-
-    ## Testing pvalue significance for RBC
-
-    ## Testing pvalue significance for HGB
-
-    ## Testing pvalue significance for HCT
-
-    ## Testing pvalue significance for PLT
-
-    ## Testing pvalue significance for SEX
-
-    ## Testing pvalue significance for RACE
-
-    ## Testing pvalue significance for DIAB
-
-    ## Testing pvalue significance for ALQ
-
-    ## Testing pvalue significance for WACT
-
-    ## Testing pvalue significance for SMQ
-
-    ## No residuals plots with a significant p-value for CL
-
-    ## NULL
+- `result_ML`: final covariates retained after the voting step;
+- `result_folds`: covariates confirmed within each outer fold;
+- `pop_param`: analyzed population parameters;
+- `cov_continuous`: continuous covariates supplied by the user;
+- `cov_factors`: categorical covariates supplied by the user;
+- `settings`: settings used for the analysis.
 
 ``` r
-generate_residuals_plot(data = data, result, pop_param = 'V1')
+result$result_ML
+result$result_folds
+result$settings
 ```
 
-    ## Testing pvalue significance for AGE
+## Optional diagnostics
 
-    ## Testing pvalue significance for WT
+SHAP and residual plots are not part of covariate search. After
+`ml_cov_search()`, `generate_shap_summary_plot()` explains the voted
+covariates with XGBoost SHAP values, and `generate_residuals_plot()`
+checks unselected covariates for leftover residual trends.
 
-    ## Testing pvalue significance for HT
+``` r
+shap_plots <- generate_shap_summary_plot(result, data, title.position = 0.5)
+cl_resid <- generate_residuals_plot(data, result, pop_param = "CL")
+```
 
-    ## Testing pvalue significance for BMI
+A longer argument reference is in
+`vignette("mlcov-updated-usage", package = "mlcov")`.
 
-    ## Testing pvalue significance for ALB
+## Interpretation
 
-    ## Testing pvalue significance for CRT
+`mlcov` is intended to support covariate screening during population
+model development. Covariates retained by the workflow should
+subsequently be assessed using pharmacological plausibility and
+confirmatory model-based analyses.
 
-    ## Testing pvalue significance for FER
+The original package description is in the [PAGE 2024
+abstract](https://www.page-meeting.org/?abstract=10996).
 
-    ## Testing pvalue significance for CHOL
+## License
 
-    ## Testing pvalue significance for WBC
-
-    ## Testing pvalue significance for LYPCT
-
-    ## Testing pvalue significance for RBC
-
-    ## Testing pvalue significance for HGB
-
-    ## Testing pvalue significance for HCT
-
-    ## Testing pvalue significance for PLT
-
-    ## Testing pvalue significance for RACE
-
-    ## Testing pvalue significance for DIAB
-
-    ## Testing pvalue significance for ALQ
-
-    ## Testing pvalue significance for WACT
-
-    ## Testing pvalue significance for SMQ
-
-    ## $WT
-
-    ## `geom_smooth()` using formula = 'y ~ x'
-
-![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+This project is licensed under the GNU General Public License v3.0.
